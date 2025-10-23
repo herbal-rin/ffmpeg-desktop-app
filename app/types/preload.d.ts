@@ -54,7 +54,9 @@ export type IPCChannel =
   | 'dialog/select-videos'
   | 'dialog/select-output-dir'
   | 'dialog/select-subtitle'
-  | 'shell/open-path';
+  | 'shell/open-path'
+  | 'file/save-temp'
+  | 'file/cleanup-temp';
 
 // IPC 请求/响应类型
 export interface ProbeRequest {
@@ -149,6 +151,23 @@ export interface OpenPathRequest {
 }
 
 export interface OpenPathResponse {
+  ok: boolean;
+}
+
+export interface SaveTempRequest {
+  fileData: ArrayBuffer;
+  fileName: string;
+}
+
+export interface SaveTempResponse {
+  tempPath: string;
+}
+
+export interface CleanupTempRequest {
+  tempPath: string;
+}
+
+export interface CleanupTempResponse {
   ok: boolean;
 }
 

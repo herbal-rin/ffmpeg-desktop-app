@@ -16,6 +16,7 @@ interface FileInfo {
   file: File;
   probeResult?: ProbeResult;
   error?: string;
+  tempPath?: string; // 临时文件路径
 }
 
 /**
@@ -67,11 +68,25 @@ export function CompressPage() {
       const fileInfo: FileInfo = { file };
       
       try {
-        // 这里应该调用 ffmpeg/probe，但由于是 File 对象，需要特殊处理
-        // 在实际应用中，可能需要先将文件保存到临时位置
-        console.log('文件选择:', file.name, formatFileSize(file.size));
+        // 将文件保存到临时目录
+        const fileData = await file.arrayBuffer();
+        const result = await window.api.invoke('file/save-temp', {
+          fileData,
+          fileName: file.name
+        });
+        
+        // 使用临时路径进行探测
+        const probeResult = await window.api.invoke('ffmpeg/probe', {
+          input: result.tempPath
+        });
+        
+        fileInfo.probeResult = probeResult;
+        fileInfo.tempPath = result.tempPath;
+        
+        console.log('文件探测完成:', file.name, formatFileSize(file.size));
       } catch (error) {
         fileInfo.error = error instanceof Error ? error.message : '探测失败';
+        console.error('文件探测失败:', file.name, error);
       }
       
       newFiles.push(fileInfo);
@@ -81,9 +96,22 @@ export function CompressPage() {
   }, []);
 
   // 移除文件
-  const handleRemoveFile = useCallback((index: number) => {
+  const handleRemoveFile = useCallback(async (index: number) => {
+    const fileToRemove = files[index];
+    
+    // 清理临时文件
+    if (fileToRemove.tempPath) {
+      try {
+        await window.api.invoke('file/cleanup-temp', {
+          tempPath: fileToRemove.tempPath
+        });
+      } catch (error) {
+        console.warn('清理临时文件失败:', error);
+      }
+    }
+    
     setFiles(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  }, [files]);
 
   // 选择输出目录
   const handleSelectOutputDir = useCallback(async () => {
@@ -126,8 +154,13 @@ export function CompressPage() {
     try {
       // 为每个文件创建任务
       for (const fileInfo of files) {
+        if (!fileInfo.tempPath) {
+          console.warn('文件缺少临时路径，跳过:', fileInfo.file.name);
+          continue;
+        }
+
         const options: TranscodeOptions = {
-          input: fileInfo.file.path || fileInfo.file.name, // 实际应用中需要处理路径
+          input: fileInfo.tempPath, // 使用临时路径
           outputDir,
           container,
           videoCodec: videoCodec === 'auto' ? 'libx264' : videoCodec,

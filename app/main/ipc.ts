@@ -149,7 +149,7 @@ export function setupIPC(): void {
         throw new Error('FFmpeg 服务未初始化');
       }
       
-      const result = await ffmpegService['ffprobeService'].probe(input);
+      const result = await ffmpegService.probe(input);
       return result;
     } catch (error) {
       logger?.error('视频探测失败', { 
@@ -511,6 +511,71 @@ export function setupIPC(): void {
         error: error instanceof Error ? error.message : String(error) 
       });
       throw error;
+    }
+  });
+
+  /**
+   * 保存文件到临时目录并返回路径
+   */
+  ipcMain.handle('file/save-temp', async (event, { fileData, fileName }: { fileData: ArrayBuffer, fileName: string }) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+      
+      // 创建临时目录
+      const tempDir = path.join(os.tmpdir(), 'ffmpeg-app-temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      // 生成唯一文件名
+      const timestamp = Date.now();
+      const ext = path.extname(fileName);
+      const baseName = path.basename(fileName, ext);
+      const tempFileName = `${baseName}_${timestamp}${ext}`;
+      const tempFilePath = path.join(tempDir, tempFileName);
+      
+      // 写入文件
+      const buffer = Buffer.from(fileData);
+      fs.writeFileSync(tempFilePath, buffer);
+      
+      logger?.info('文件已保存到临时目录', { 
+        originalName: fileName,
+        tempPath: tempFilePath,
+        size: buffer.length 
+      });
+      
+      return { tempPath: tempFilePath };
+    } catch (error) {
+      logger?.error('保存临时文件失败', { 
+        fileName,
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      throw error;
+    }
+  });
+
+  /**
+   * 清理临时文件
+   */
+  ipcMain.handle('file/cleanup-temp', async (event, { tempPath }: { tempPath: string }) => {
+    try {
+      const fs = await import('fs');
+      
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+        logger?.debug('临时文件已清理', { tempPath });
+      }
+      
+      return { ok: true };
+    } catch (error) {
+      logger?.warn('清理临时文件失败', { 
+        tempPath,
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      // 不抛出错误，清理失败不应该阻断流程
+      return { ok: true };
     }
   });
 
