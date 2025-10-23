@@ -1,0 +1,176 @@
+{
+  "app": {
+    "title": "FFmpeg Video Compressor",
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info"
+  },
+  "compress": {
+    "title": "Video Compression",
+    "addFiles": "Add Video Files",
+    "dragDrop": "Drag video files here, or click to select files",
+    "selectFiles": "Select Files",
+    "outputDir": "Output Directory",
+    "selectOutputDir": "Select Output Directory",
+    "startQueue": "Start Compression",
+    "clearQueue": "Clear Queue"
+  },
+  "file": {
+    "name": "File Name",
+    "size": "Size",
+    "duration": "Duration",
+    "resolution": "Resolution",
+    "format": "Format",
+    "codec": "Codec",
+    "bitrate": "Bitrate",
+    "fps": "FPS",
+    "audioTracks": "Audio Tracks",
+    "subtitleTracks": "Subtitle Tracks"
+  },
+  "settings": {
+    "title": "Settings",
+    "video": "Video Settings",
+    "audio": "Audio Settings",
+    "subtitle": "Subtitle Settings",
+    "output": "Output Settings",
+    "advanced": "Advanced Settings"
+  },
+  "codec": {
+    "auto": "Auto Select",
+    "libx264": "H.264 (Software)",
+    "libx265": "H.265 (Software)",
+    "h264_nvenc": "H.264 (NVIDIA)",
+    "hevc_nvenc": "H.265 (NVIDIA)",
+    "h264_qsv": "H.264 (Intel)",
+    "hevc_qsv": "H.265 (Intel)",
+    "h264_videotoolbox": "H.264 (Apple)",
+    "hevc_videotoolbox": "H.265 (Apple)"
+  },
+  "preset": {
+    "title": "Preset",
+    "hq_slow": "High Quality Slow",
+    "balanced": "Balanced",
+    "fast_small": "Fast Small",
+    "custom": "Custom",
+    "description": {
+      "hq_slow": "Highest quality, slower compression",
+      "balanced": "Balance between quality and speed",
+      "fast_small": "Fast compression, smaller files"
+    }
+  },
+  "audio": {
+    "copy": "Copy Audio Stream",
+    "encode": "Re-encode",
+    "codec": "Audio Codec",
+    "bitrate": "Audio Bitrate",
+    "aac": "AAC",
+    "opus": "Opus",
+    "mp3": "MP3"
+  },
+  "subtitle": {
+    "none": "No Subtitle",
+    "soft": "Soft Subtitle",
+    "burn": "Burn Subtitle",
+    "selectFile": "Select Subtitle File",
+    "file": "Subtitle File",
+    "encoding": "Subtitle Encoding"
+  },
+  "container": {
+    "mp4": "MP4",
+    "mkv": "MKV"
+  },
+  "job": {
+    "status": {
+      "queued": "Queued",
+      "running": "Running",
+      "paused": "Paused",
+      "canceled": "Canceled",
+      "failed": "Failed",
+      "completed": "Completed"
+    },
+    "progress": "Progress",
+    "speed": "Speed",
+    "eta": "ETA",
+    "output": "Output File",
+    "actions": {
+      "cancel": "Cancel",
+      "pause": "Pause",
+      "resume": "Resume",
+      "remove": "Remove",
+      "openFolder": "Open Folder"
+    }
+  },
+  "queue": {
+    "title": "Job Queue",
+    "empty": "Queue is empty",
+    "processing": "Processing",
+    "waiting": "Waiting",
+    "total": "Total",
+    "completed": "Completed",
+    "failed": "Failed"
+  },
+  "gpu": {
+    "title": "Hardware Acceleration",
+    "detect": "Detect Hardware",
+    "supported": "Supported Hardware Accelerators",
+    "encoders": "Supported Encoders",
+    "notSupported": "Hardware acceleration not supported",
+    "fallback": "Will use software encoding"
+  },
+  "error": {
+    "ffmpegNotFound": "FFmpeg not found",
+    "invalidInput": "Invalid input file",
+    "invalidOutput": "Invalid output path",
+    "permissionDenied": "Permission denied",
+    "diskFull": "Disk space insufficient",
+    "unsupportedFormat": "Unsupported format",
+    "encodingFailed": "Encoding failed",
+    "pauseUnsupported": "Pause not supported on this platform",
+    "networkError": "Network error",
+    "unknown": "Unknown error"
+  },
+  "menu": {
+    "file": "File",
+    "edit": "Edit",
+    "view": "View",
+    "window": "Window",
+    "help": "Help",
+    "addFiles": "Add Video Files",
+    "setOutput": "Set Output Directory",
+    "about": "About",
+    "exit": "Exit",
+    "undo": "Undo",
+    "redo": "Redo",
+    "cut": "Cut",
+    "copy": "Copy",
+    "paste": "Paste",
+    "reload": "Reload",
+    "devTools": "Developer Tools",
+    "minimize": "Minimize",
+    "close": "Close"
+  },
+  "tooltip": {
+    "pauseUnsupported": "Pause not supported on this platform",
+    "hardwareAcceleration": "Hardware acceleration can significantly improve encoding speed",
+    "presetDescription": "Preset affects compression quality and speed",
+    "audioCopy": "Copy audio stream without re-encoding, faster",
+    "subtitleSoft": "Soft subtitle, player can choose to display",
+    "subtitleBurn": "Burn subtitle, will re-encode video"
+  },
+  "units": {
+    "bytes": "bytes",
+    "kb": "KB",
+    "mb": "MB",
+    "gb": "GB",
+    "tb": "TB",
+    "seconds": "seconds",
+    "minutes": "minutes",
+    "hours": "hours",
+    "days": "days",
+    "fps": "fps",
+    "kbps": "kbps",
+    "mbps": "Mbps"
+  }
+}

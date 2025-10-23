@@ -1,0 +1,176 @@
+{
+  "app": {
+    "title": "FFmpeg 视频压缩应用",
+    "loading": "正在加载...",
+    "error": "错误",
+    "success": "成功",
+    "warning": "警告",
+    "info": "信息"
+  },
+  "compress": {
+    "title": "视频压缩",
+    "addFiles": "添加视频文件",
+    "dragDrop": "拖拽视频文件到此处，或点击选择文件",
+    "selectFiles": "选择文件",
+    "outputDir": "输出目录",
+    "selectOutputDir": "选择输出目录",
+    "startQueue": "开始压缩",
+    "clearQueue": "清空队列"
+  },
+  "file": {
+    "name": "文件名",
+    "size": "大小",
+    "duration": "时长",
+    "resolution": "分辨率",
+    "format": "格式",
+    "codec": "编码器",
+    "bitrate": "码率",
+    "fps": "帧率",
+    "audioTracks": "音频轨道",
+    "subtitleTracks": "字幕轨道"
+  },
+  "settings": {
+    "title": "设置",
+    "video": "视频设置",
+    "audio": "音频设置",
+    "subtitle": "字幕设置",
+    "output": "输出设置",
+    "advanced": "高级设置"
+  },
+  "codec": {
+    "auto": "自动选择",
+    "libx264": "H.264 (软件)",
+    "libx265": "H.265 (软件)",
+    "h264_nvenc": "H.264 (NVIDIA)",
+    "hevc_nvenc": "H.265 (NVIDIA)",
+    "h264_qsv": "H.264 (Intel)",
+    "hevc_qsv": "H.265 (Intel)",
+    "h264_videotoolbox": "H.264 (Apple)",
+    "hevc_videotoolbox": "H.265 (Apple)"
+  },
+  "preset": {
+    "title": "预设",
+    "hq_slow": "高质量慢速",
+    "balanced": "平衡",
+    "fast_small": "快速小文件",
+    "custom": "自定义",
+    "description": {
+      "hq_slow": "最高质量，压缩速度较慢",
+      "balanced": "质量与速度平衡",
+      "fast_small": "快速压缩，文件较小"
+    }
+  },
+  "audio": {
+    "copy": "复制音频流",
+    "encode": "重新编码",
+    "codec": "音频编码器",
+    "bitrate": "音频码率",
+    "aac": "AAC",
+    "opus": "Opus",
+    "mp3": "MP3"
+  },
+  "subtitle": {
+    "none": "无字幕",
+    "soft": "软封装",
+    "burn": "硬烧录",
+    "selectFile": "选择字幕文件",
+    "file": "字幕文件",
+    "encoding": "字幕编码"
+  },
+  "container": {
+    "mp4": "MP4",
+    "mkv": "MKV"
+  },
+  "job": {
+    "status": {
+      "queued": "排队中",
+      "running": "处理中",
+      "paused": "已暂停",
+      "canceled": "已取消",
+      "failed": "失败",
+      "completed": "已完成"
+    },
+    "progress": "进度",
+    "speed": "速度",
+    "eta": "剩余时间",
+    "output": "输出文件",
+    "actions": {
+      "cancel": "取消",
+      "pause": "暂停",
+      "resume": "恢复",
+      "remove": "移除",
+      "openFolder": "打开文件夹"
+    }
+  },
+  "queue": {
+    "title": "任务队列",
+    "empty": "队列为空",
+    "processing": "正在处理",
+    "waiting": "等待中",
+    "total": "总计",
+    "completed": "已完成",
+    "failed": "失败"
+  },
+  "gpu": {
+    "title": "硬件加速",
+    "detect": "检测硬件",
+    "supported": "支持的硬件加速器",
+    "encoders": "支持的编码器",
+    "notSupported": "不支持硬件加速",
+    "fallback": "将使用软件编码"
+  },
+  "error": {
+    "ffmpegNotFound": "FFmpeg 未找到",
+    "invalidInput": "无效的输入文件",
+    "invalidOutput": "无效的输出路径",
+    "permissionDenied": "权限不足",
+    "diskFull": "磁盘空间不足",
+    "unsupportedFormat": "不支持的格式",
+    "encodingFailed": "编码失败",
+    "pauseUnsupported": "此平台不支持暂停功能",
+    "networkError": "网络错误",
+    "unknown": "未知错误"
+  },
+  "menu": {
+    "file": "文件",
+    "edit": "编辑",
+    "view": "视图",
+    "window": "窗口",
+    "help": "帮助",
+    "addFiles": "添加视频文件",
+    "setOutput": "设置输出目录",
+    "about": "关于",
+    "exit": "退出",
+    "undo": "撤销",
+    "redo": "重做",
+    "cut": "剪切",
+    "copy": "复制",
+    "paste": "粘贴",
+    "reload": "重新加载",
+    "devTools": "开发者工具",
+    "minimize": "最小化",
+    "close": "关闭"
+  },
+  "tooltip": {
+    "pauseUnsupported": "此平台不支持暂停功能",
+    "hardwareAcceleration": "使用硬件加速可以显著提升编码速度",
+    "presetDescription": "选择预设会影响压缩质量和速度",
+    "audioCopy": "复制音频流不会重新编码，速度更快",
+    "subtitleSoft": "软封装字幕，播放器可以选择显示",
+    "subtitleBurn": "硬烧录字幕，会重新编码视频"
+  },
+  "units": {
+    "bytes": "字节",
+    "kb": "KB",
+    "mb": "MB",
+    "gb": "GB",
+    "tb": "TB",
+    "seconds": "秒",
+    "minutes": "分钟",
+    "hours": "小时",
+    "days": "天",
+    "fps": "fps",
+    "kbps": "kbps",
+    "mbps": "Mbps"
+  }
+}
