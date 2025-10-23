@@ -15,7 +15,7 @@ const api = {
    * 监听主进程事件
    */
   on: (channel: 'queue/events', callback: (payload: any) => void): (() => void) => {
-    const handler = (event: any, payload: any) => callback(payload);
+    const handler = (_event: any, payload: any) => callback(payload);
     ipcRenderer.on(channel, handler);
     
     // 返回取消监听的函数
@@ -28,10 +28,10 @@ const api = {
    * 监听菜单事件
    */
   onMenu: (callback: (action: string) => void): (() => void) => {
-    const handler = (event: any, action: string) => callback(action);
-    ipcRenderer.on('menu:add-files', () => handler(event, 'add-files'));
-    ipcRenderer.on('menu:set-output', () => handler(event, 'set-output'));
-    ipcRenderer.on('menu:about', () => handler(event, 'about'));
+    const handler = (_event: any, action: string) => callback(action);
+    ipcRenderer.on('menu:add-files', () => handler(null, 'add-files'));
+    ipcRenderer.on('menu:set-output', () => handler(null, 'set-output'));
+    ipcRenderer.on('menu:about', () => handler(null, 'about'));
     
     // 返回取消监听的函数
     return () => {
@@ -45,8 +45,8 @@ const api = {
    * 监听应用事件
    */
   onApp: (callback: (event: string) => void): (() => void) => {
-    const handler = (event: any, eventType: string) => callback(eventType);
-    ipcRenderer.on('app:before-quit', () => handler(event, 'before-quit'));
+    const handler = (_event: any, eventType: string) => callback(eventType);
+    ipcRenderer.on('app:before-quit', () => handler(null, 'before-quit'));
     
     // 返回取消监听的函数
     return () => {

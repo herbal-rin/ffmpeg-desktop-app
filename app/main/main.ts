@@ -206,10 +206,10 @@ app.on('before-quit', () => {
 /**
  * 安全处理：防止新窗口创建
  */
-app.on('web-contents-created', (event, contents) => {
-  contents.on('new-window', (event, url) => {
-    event.preventDefault();
+app.on('web-contents-created', (_event, contents) => {
+  contents.setWindowOpenHandler(({ url }) => {
     shell.openExternal(url);
+    return { action: 'deny' };
   });
 });
 

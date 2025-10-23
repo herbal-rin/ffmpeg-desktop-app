@@ -149,7 +149,7 @@ FFmpeg 可执行文件路径未配置。
    * 获取默认输出目录
    */
   getDefaultOutputDir(): string {
-    return this.store.get('defaultOutputDir');
+    return this.store.get('defaultOutputDir', this.getDefaultOutputPath());
   }
 
   /**
@@ -308,6 +308,34 @@ FFmpeg 可执行文件路径未配置。
       valid: errors.length === 0,
       errors
     };
+  }
+
+  /**
+   * 获取 FFmpeg 路径
+   */
+  getFfmpegPath(): string {
+    return this.store.get('ffmpegPath', '');
+  }
+
+  /**
+   * 获取 FFprobe 路径
+   */
+  getFfprobePath(): string {
+    return this.store.get('ffprobePath', '');
+  }
+
+  /**
+   * 设置 FFmpeg 路径
+   */
+  setFfmpegPath(path: string): void {
+    this.store.set('ffmpegPath', path);
+  }
+
+  /**
+   * 设置 FFprobe 路径
+   */
+  setFfprobePath(path: string): void {
+    this.store.set('ffprobePath', path);
   }
 }
 

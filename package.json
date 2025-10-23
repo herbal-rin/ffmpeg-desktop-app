@@ -2,7 +2,7 @@
   "name": "ffmpeg-video-compressor",
   "version": "1.0.0",
   "description": "桌面端视频压缩应用 - Electron + React",
-  "main": "dist/main/main.js",
+  "main": "dist/main/main/main.js",
   "homepage": "./",
   "scripts": {
     "dev": "concurrently \"npm run dev:main\" \"npm run dev:renderer\"",

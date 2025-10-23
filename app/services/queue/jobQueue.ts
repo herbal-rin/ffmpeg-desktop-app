@@ -1,11 +1,8 @@
 import { EventEmitter } from 'events';
 import { 
   Job, 
-  JobStatus, 
   TranscodeOptions, 
-  Progress, 
-  JobQueueEvents,
-  ERRORS
+  Progress
 } from '../../shared/types';
 import { FfmpegService } from '../ffmpeg/ffmpegService';
 import { Logger } from '../../shared/types';
@@ -301,14 +298,6 @@ export class JobQueue extends EventEmitter {
       const onProgress = (progress: Progress) => {
         job.lastProgress = progress;
         this.emit('job-progress', { job, progress });
-      };
-
-      const onStart = () => {
-        // 记录进程 PID（这里需要从 FfmpegService 获取）
-        const activeProcesses = this.ffmpegService.getActiveProcesses();
-        if (activeProcesses.length > 0) {
-          this.activePid = activeProcesses[0];
-        }
       };
 
       // 执行转码

@@ -1,17 +1,11 @@
 import { ipcMain, dialog, shell } from 'electron';
-import { join } from 'path';
 import { FfmpegService } from '../services/ffmpeg/ffmpegService';
 import { JobQueue } from '../services/queue/jobQueue';
 import { ConsoleLogger } from '../services/logger';
 import { configService } from '../services/config';
-import { ArgsBuilder } from '../services/ffmpeg/argsBuilder';
 import { mainWindow } from './main';
 import { 
-  TranscodeOptions, 
-  ProbeResult, 
-  Job, 
-  Progress, 
-  FfmpegPaths,
+  TranscodeOptions,
   ERRORS 
 } from '../shared/types';
 
@@ -143,7 +137,7 @@ export function setupIPC(): void {
   /**
    * 探测视频文件信息
    */
-  ipcMain.handle('ffmpeg/probe', async (event, { input }: { input: string }) => {
+  ipcMain.handle('ffmpeg/probe', async (_event, { input }: { input: string }) => {
     try {
       if (!ffmpegService) {
         throw new Error('FFmpeg 服务未初始化');
@@ -163,7 +157,7 @@ export function setupIPC(): void {
   /**
    * 添加任务到队列
    */
-  ipcMain.handle('ffmpeg/queue/enqueue', async (event, options: TranscodeOptions) => {
+  ipcMain.handle('ffmpeg/queue/enqueue', async (_event, options: TranscodeOptions) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -187,7 +181,7 @@ export function setupIPC(): void {
   /**
    * 开始处理队列
    */
-  ipcMain.handle('ffmpeg/queue/start', async (event, {}) => {
+  ipcMain.handle('ffmpeg/queue/start', async (_event, {}) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -208,7 +202,7 @@ export function setupIPC(): void {
   /**
    * 取消任务
    */
-  ipcMain.handle('ffmpeg/queue/cancel', async (event, { jobId }: { jobId: string }) => {
+  ipcMain.handle('ffmpeg/queue/cancel', async (_event, { jobId }: { jobId: string }) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -230,7 +224,7 @@ export function setupIPC(): void {
   /**
    * 暂停任务
    */
-  ipcMain.handle('ffmpeg/queue/pause', async (event, { jobId }: { jobId: string }) => {
+  ipcMain.handle('ffmpeg/queue/pause', async (_event, { jobId }: { jobId: string }) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -259,7 +253,7 @@ export function setupIPC(): void {
   /**
    * 恢复任务
    */
-  ipcMain.handle('ffmpeg/queue/resume', async (event, { jobId }: { jobId: string }) => {
+  ipcMain.handle('ffmpeg/queue/resume', async (_event, { jobId }: { jobId: string }) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -290,11 +284,11 @@ export function setupIPC(): void {
   /**
    * 获取设置
    */
-  ipcMain.handle('settings/get', async (event, {}) => {
+  ipcMain.handle('settings/get', async (_event, {}) => {
     try {
       return {
-        ffmpegPath: configService.store.get('ffmpegPath', ''),
-        ffprobePath: configService.store.get('ffprobePath', ''),
+        ffmpegPath: configService.getFfmpegPath(),
+        ffprobePath: configService.getFfprobePath(),
         defaultOutputDir: configService.getDefaultOutputDir(),
         language: configService.getLanguage(),
         theme: configService.getTheme(),
@@ -311,13 +305,13 @@ export function setupIPC(): void {
   /**
    * 设置设置
    */
-  ipcMain.handle('settings/set', async (event, settings: any) => {
+  ipcMain.handle('settings/set', async (_event, settings: any) => {
     try {
       if (settings.ffmpegPath !== undefined) {
-        configService.store.set('ffmpegPath', settings.ffmpegPath);
+        configService.setFfmpegPath(settings.ffmpegPath);
       }
       if (settings.ffprobePath !== undefined) {
-        configService.store.set('ffprobePath', settings.ffprobePath);
+        configService.setFfprobePath(settings.ffprobePath);
       }
       if (settings.defaultOutputDir !== undefined) {
         configService.setDefaultOutputDir(settings.defaultOutputDir);
@@ -348,7 +342,7 @@ export function setupIPC(): void {
   /**
    * 检测硬件加速支持
    */
-  ipcMain.handle('gpu/detect', async (event, {}) => {
+  ipcMain.handle('gpu/detect', async (_event, {}) => {
     try {
       const { spawn } = await import('child_process');
       const paths = configService.getPaths();
@@ -436,7 +430,7 @@ export function setupIPC(): void {
   /**
    * 选择视频文件
    */
-  ipcMain.handle('dialog/select-videos', async (event, {}) => {
+  ipcMain.handle('dialog/select-videos', async (_event, {}) => {
     try {
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: '选择视频文件',
@@ -459,7 +453,7 @@ export function setupIPC(): void {
   /**
    * 选择输出目录
    */
-  ipcMain.handle('dialog/select-output-dir', async (event, {}) => {
+  ipcMain.handle('dialog/select-output-dir', async (_event, {}) => {
     try {
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: '选择输出目录',
@@ -478,7 +472,7 @@ export function setupIPC(): void {
   /**
    * 选择字幕文件
    */
-  ipcMain.handle('dialog/select-subtitle', async (event, {}) => {
+  ipcMain.handle('dialog/select-subtitle', async (_event, {}) => {
     try {
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: '选择字幕文件',
@@ -501,7 +495,7 @@ export function setupIPC(): void {
   /**
    * 打开文件所在目录
    */
-  ipcMain.handle('shell/open-path', async (event, { path }: { path: string }) => {
+  ipcMain.handle('shell/open-path', async (_event, { path }: { path: string }) => {
     try {
       await shell.showItemInFolder(path);
       return { ok: true };
@@ -517,7 +511,7 @@ export function setupIPC(): void {
   /**
    * 保存文件到临时目录并返回路径
    */
-  ipcMain.handle('file/save-temp', async (event, { fileData, fileName }: { fileData: ArrayBuffer, fileName: string }) => {
+  ipcMain.handle('file/save-temp', async (_event, { fileData, fileName }: { fileData: ArrayBuffer, fileName: string }) => {
     try {
       const fs = await import('fs');
       const path = await import('path');
@@ -559,7 +553,7 @@ export function setupIPC(): void {
   /**
    * 清理临时文件
    */
-  ipcMain.handle('file/cleanup-temp', async (event, { tempPath }: { tempPath: string }) => {
+  ipcMain.handle('file/cleanup-temp', async (_event, { tempPath }: { tempPath: string }) => {
     try {
       const fs = await import('fs');
       
