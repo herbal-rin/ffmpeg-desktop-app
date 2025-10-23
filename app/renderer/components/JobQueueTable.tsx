@@ -109,8 +109,43 @@ export function JobQueueTable() {
   }
 
   return (
-    <div className="space-y-3">
-      {jobs.map((job) => (
+    <div className="space-y-4">
+      {/* 队列标题和快捷操作 */}
+      <div className="flex items-center justify-between">
+        <h3 className="text-lg font-semibold">{t('queue.title')}</h3>
+        <div className="flex items-center space-x-2">
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {t('queue.processing')}: {isProcessing ? t('common.yes') : t('common.no')}
+          </div>
+          {/* 快捷操作按钮 */}
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={() => window.api.invoke('ffmpeg/queue/start')}
+              disabled={isProcessing || jobs.length === 0}
+              className="btn btn-sm btn-primary"
+            >
+              ▶️ {t('queue.start')}
+            </button>
+            <button
+              onClick={() => {
+                const completedJob = jobs.find(j => j.status === 'completed');
+                if (completedJob?.output) {
+                  const path = require('path');
+                  window.api.invoke('system/openDirectory', path.dirname(completedJob.output));
+                }
+              }}
+              disabled={!jobs.some(j => j.status === 'completed')}
+              className="btn btn-sm btn-outline"
+            >
+              📁 {t('queue.openOutputDir')}
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 任务列表 */}
+      <div className="space-y-3">
+        {jobs.map((job) => (
         <div
           key={job.id}
           className={`p-4 border rounded-lg transition-all ${
@@ -251,6 +286,7 @@ export function JobQueueTable() {
             {t('queue.failed')}: {jobs.filter(j => j.status === 'failed').length}
           </span>
         </div>
+      </div>
       </div>
     </div>
   );

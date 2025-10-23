@@ -3,15 +3,41 @@ import { t, getPresetDisplayName, getPresetDescription } from '../i18n';
 import { VideoCodec } from '@types/preload';
 
 /**
- * 自定义预设配置
+ * 预设预估信息
  */
-interface CustomPresetConfig {
-  crf: number;
-  preset: string;
-  maxrate?: string;
-  bufsize?: string;
-  bframes?: number;
-  lookahead?: number;
+interface PresetEstimate {
+  encodingTime: string;
+  fileSize: string;
+  quality: string;
+}
+
+/**
+ * 获取预设预估信息
+ */
+function getPresetEstimate(presetName: string, codec: VideoCodec | 'auto'): PresetEstimate {
+  const estimates: Record<string, PresetEstimate> = {
+    'hq_slow': {
+      encodingTime: '2-4x',
+      fileSize: '最小',
+      quality: '最高'
+    },
+    'balanced': {
+      encodingTime: '1-2x',
+      fileSize: '中等',
+      quality: '良好'
+    },
+    'fast_small': {
+      encodingTime: '0.5-1x',
+      fileSize: '较大',
+      quality: '一般'
+    }
+  };
+
+  return estimates[presetName] || {
+    encodingTime: '未知',
+    fileSize: '未知',
+    quality: '未知'
+  };
 }
 
 /**
@@ -150,19 +176,27 @@ export function PresetPicker({ value, onChange, codec, disabled = false }: Prese
         </label>
         
         <div className="grid grid-cols-2 gap-2">
-          {presetOptions.map((preset) => (
-            <button
-              key={preset.value}
-              onClick={() => handlePresetChange(preset.value)}
-              disabled={disabled}
-              className={`btn btn-outline text-left p-3 h-auto ${
-                value === preset.value ? 'bg-primary text-primary-foreground' : ''
-              }`}
-            >
-              <div className="font-medium">{preset.label}</div>
-              <div className="text-xs opacity-75 mt-1">{preset.description}</div>
-            </button>
-          ))}
+          {presetOptions.map((preset) => {
+            const estimate = getPresetEstimate(preset.value, codec);
+            return (
+              <button
+                key={preset.value}
+                onClick={() => handlePresetChange(preset.value)}
+                disabled={disabled}
+                className={`btn btn-outline text-left p-3 h-auto ${
+                  value === preset.value ? 'bg-primary text-primary-foreground' : ''
+                }`}
+              >
+                <div className="font-medium">{preset.label}</div>
+                <div className="text-xs opacity-75 mt-1">{preset.description}</div>
+                <div className="text-xs opacity-60 mt-2 space-y-1">
+                  <div>⏱️ 耗时: {estimate.encodingTime}</div>
+                  <div>📁 大小: {estimate.fileSize}</div>
+                  <div>🎯 质量: {estimate.quality}</div>
+                </div>
+              </button>
+            );
+          })}
         </div>
       </div>
 

@@ -13,6 +13,8 @@ interface ConfigSchema {
   hardwareAcceleration: boolean;
   language: string;
   theme: string;
+  version: string;
+  lastUpdated: number;
 }
 
 /**
@@ -22,6 +24,9 @@ export class ConfigService {
   private store: Store<ConfigSchema>;
 
   constructor() {
+    const currentVersion = '1.0.0';
+    const currentTime = Date.now();
+    
     this.store = new Store<ConfigSchema>({
       defaults: {
         ffmpegPath: '',
@@ -29,9 +34,66 @@ export class ConfigService {
         defaultOutputDir: this.getDefaultOutputPath(),
         hardwareAcceleration: true,
         language: 'zh-CN',
-        theme: 'light'
+        theme: 'light',
+        version: currentVersion,
+        lastUpdated: currentTime
+      },
+      schema: {
+        ffmpegPath: {
+          type: 'string',
+          default: ''
+        },
+        ffprobePath: {
+          type: 'string',
+          default: ''
+        },
+        defaultOutputDir: {
+          type: 'string',
+          default: this.getDefaultOutputPath()
+        },
+        hardwareAcceleration: {
+          type: 'boolean',
+          default: true
+        },
+        language: {
+          type: 'string',
+          enum: ['zh-CN', 'en'],
+          default: 'zh-CN'
+        },
+        theme: {
+          type: 'string',
+          enum: ['light', 'dark'],
+          default: 'light'
+        },
+        version: {
+          type: 'string',
+          default: currentVersion
+        },
+        lastUpdated: {
+          type: 'number',
+          default: currentTime
+        }
+      },
+      migrations: {
+        '1.0.0': (store) => {
+          // 迁移到版本 1.0.0
+          const currentData = store.store;
+          store.set('version', currentVersion);
+          store.set('lastUpdated', currentTime);
+          
+          // 验证和修复数据
+          if (!currentData.language || !['zh-CN', 'en'].includes(currentData.language)) {
+            store.set('language', 'zh-CN');
+          }
+          if (!currentData.theme || !['light', 'dark'].includes(currentData.theme)) {
+            store.set('theme', 'light');
+          }
+        }
       }
     });
+    
+    // 检查版本并执行迁移
+    this.checkAndMigrate(currentVersion);
   }
 
   /**
@@ -186,6 +248,66 @@ FFmpeg 可执行文件路径未配置。
         this.store.set(key as keyof ConfigSchema, value);
       }
     });
+  }
+
+  /**
+   * 检查版本并执行迁移
+   */
+  private checkAndMigrate(currentVersion: string): void {
+    const storedVersion = this.store.get('version');
+    
+    if (!storedVersion || storedVersion !== currentVersion) {
+      // 执行迁移
+      this.store.set('version', currentVersion);
+      this.store.set('lastUpdated', Date.now());
+      
+      console.log(`配置已迁移到版本 ${currentVersion}`);
+    }
+  }
+
+  /**
+   * 获取配置版本信息
+   */
+  getVersionInfo(): { version: string; lastUpdated: number } {
+    return {
+      version: this.store.get('version'),
+      lastUpdated: this.store.get('lastUpdated')
+    };
+  }
+
+  /**
+   * 验证配置完整性
+   */
+  validateConfig(): { valid: boolean; errors: string[] } {
+    const errors: string[] = [];
+    
+    // 检查必需字段
+    if (!this.store.get('ffmpegPath')) {
+      errors.push('FFmpeg 路径未设置');
+    }
+    if (!this.store.get('ffprobePath')) {
+      errors.push('FFprobe 路径未设置');
+    }
+    if (!this.store.get('defaultOutputDir')) {
+      errors.push('默认输出目录未设置');
+    }
+    
+    // 检查语言设置
+    const language = this.store.get('language');
+    if (!language || !['zh-CN', 'en'].includes(language)) {
+      errors.push('语言设置无效');
+    }
+    
+    // 检查主题设置
+    const theme = this.store.get('theme');
+    if (!theme || !['light', 'dark'].includes(theme)) {
+      errors.push('主题设置无效');
+    }
+    
+    return {
+      valid: errors.length === 0,
+      errors
+    };
   }
 }
 

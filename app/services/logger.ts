@@ -9,10 +9,14 @@ import { Logger, LogLevel } from '../shared/types';
 export class PinoLogger implements Logger {
   private logger: pino.Logger;
   private logDir: string;
+  private readonly MAX_LOG_SIZE = 20 * 1024 * 1024; // 20MB
+  private readonly MAX_LOG_FILES = 7; // 保留7个日志文件
+  private readonly LOG_RETENTION_DAYS = 7; // 保留7天
 
   constructor(logDir?: string) {
     this.logDir = logDir || this.getDefaultLogDir();
     this.ensureLogDir();
+    this.cleanupOldLogs();
     
     const logFile = path.join(this.logDir, this.getLogFileName());
     
@@ -61,6 +65,99 @@ export class PinoLogger implements Logger {
   child(meta: Record<string, unknown>): Logger {
     const childLogger = this.logger.child(meta);
     return new PinoLoggerChild(childLogger);
+  }
+
+  /**
+   * 清理旧日志文件
+   */
+  private cleanupOldLogs(): void {
+    try {
+      if (!fs.existsSync(this.logDir)) {
+        return;
+      }
+
+      const files = fs.readdirSync(this.logDir);
+      const logFiles = files
+        .filter(file => file.startsWith('ffmpeg-app-') && file.endsWith('.log'))
+        .map(file => ({
+          name: file,
+          path: path.join(this.logDir, file),
+          stats: fs.statSync(path.join(this.logDir, file))
+        }))
+        .sort((a, b) => b.stats.mtime.getTime() - a.stats.mtime.getTime());
+
+      // 删除超过保留天数的日志文件
+      const cutoffTime = Date.now() - (this.LOG_RETENTION_DAYS * 24 * 60 * 60 * 1000);
+      for (const file of logFiles) {
+        if (file.stats.mtime.getTime() < cutoffTime) {
+          try {
+            fs.unlinkSync(file.path);
+            this.logger.debug('删除过期日志文件', { file: file.name });
+          } catch (error) {
+            this.logger.warn('删除过期日志文件失败', { 
+              file: file.name, 
+              error: error instanceof Error ? error.message : String(error) 
+            });
+          }
+        }
+      }
+
+      // 检查当前日志文件大小，如果超过限制则轮转
+      const currentLogFile = path.join(this.logDir, this.getLogFileName());
+      if (fs.existsSync(currentLogFile)) {
+        const stats = fs.statSync(currentLogFile);
+        if (stats.size > this.MAX_LOG_SIZE) {
+          this.rotateLogFile();
+        }
+      }
+
+      // 限制日志文件数量
+      const remainingLogFiles = logFiles.filter(file => 
+        file.stats.mtime.getTime() >= cutoffTime
+      );
+      
+      if (remainingLogFiles.length > this.MAX_LOG_FILES) {
+        const filesToDelete = remainingLogFiles.slice(this.MAX_LOG_FILES);
+        for (const file of filesToDelete) {
+          try {
+            fs.unlinkSync(file.path);
+            this.logger.debug('删除多余日志文件', { file: file.name });
+          } catch (error) {
+            this.logger.warn('删除多余日志文件失败', { 
+              file: file.name, 
+              error: error instanceof Error ? error.message : String(error) 
+            });
+          }
+        }
+      }
+
+    } catch (error) {
+      this.logger.warn('清理日志文件失败', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
+  }
+
+  /**
+   * 轮转日志文件
+   */
+  private rotateLogFile(): void {
+    try {
+      const currentLogFile = path.join(this.logDir, this.getLogFileName());
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+      const rotatedLogFile = path.join(this.logDir, `ffmpeg-app-${timestamp}.log`);
+      
+      if (fs.existsSync(currentLogFile)) {
+        fs.renameSync(currentLogFile, rotatedLogFile);
+        this.logger.info('日志文件已轮转', { 
+          rotatedFile: rotatedLogFile 
+        });
+      }
+    } catch (error) {
+      this.logger.warn('轮转日志文件失败', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+    }
   }
 
   /**

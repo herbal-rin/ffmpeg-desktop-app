@@ -9,6 +9,7 @@ interface ToastProps {
   type?: 'success' | 'error' | 'warning' | 'info';
   duration?: number;
   onClose?: () => void;
+  details?: string; // 错误详情
 }
 
 /**
@@ -18,24 +19,30 @@ interface ToastState {
   visible: boolean;
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
+  details?: string;
+  showDetails: boolean;
 }
 
 /**
  * Toast 组件
  */
-export function Toast({ message, type = 'info', duration = 3000, onClose }: ToastProps) {
+export function Toast({ message, type = 'info', duration = 3000, onClose, details }: ToastProps) {
   const [state, setState] = React.useState<ToastState>({
     visible: false,
     message: '',
-    type: 'info'
+    type: 'info',
+    details: undefined,
+    showDetails: false
   });
 
   // 显示 Toast
-  const showToast = React.useCallback((msg: string, toastType: 'success' | 'error' | 'warning' | 'info') => {
+  const showToast = React.useCallback((msg: string, toastType: 'success' | 'error' | 'warning' | 'info', errorDetails?: string) => {
     setState({
       visible: true,
       message: msg,
-      type: toastType
+      type: toastType,
+      details: errorDetails,
+      showDetails: false
     });
 
     // 自动隐藏
@@ -56,9 +63,9 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
   // 处理外部消息
   React.useEffect(() => {
     if (message) {
-      showToast(message, type);
+      showToast(message, type, details);
     }
-  }, [message, type, showToast]);
+  }, [message, type, details, showToast]);
 
   if (!state.visible) {
     return null;
@@ -94,15 +101,35 @@ export function Toast({ message, type = 'info', duration = 3000, onClose }: Toas
 
   return (
     <div className="fixed top-4 right-4 z-50 animate-slide-up">
-      <div className={`${getBgColor()} text-white px-4 py-3 rounded-lg shadow-lg flex items-center space-x-2 max-w-sm`}>
-        <span className="text-lg">{getIcon()}</span>
-        <span className="flex-1">{state.message}</span>
-        <button
-          onClick={() => setState(prev => ({ ...prev, visible: false }))}
-          className="text-white hover:text-gray-200 transition-colors"
-        >
-          ✕
-        </button>
+      <div className={`${getBgColor()} text-white px-4 py-3 rounded-lg shadow-lg max-w-md`}>
+        <div className="flex items-center space-x-2">
+          <span className="text-lg">{getIcon()}</span>
+          <span className="flex-1">{state.message}</span>
+          <button
+            onClick={() => setState(prev => ({ ...prev, visible: false }))}
+            className="text-white hover:text-gray-200 transition-colors"
+          >
+            ✕
+          </button>
+        </div>
+        
+        {/* 错误详情 */}
+        {state.type === 'error' && state.details && (
+          <div className="mt-2">
+            <button
+              onClick={() => setState(prev => ({ ...prev, showDetails: !prev.showDetails }))}
+              className="text-xs text-gray-200 hover:text-white underline"
+            >
+              {state.showDetails ? '隐藏详情' : '查看详情'}
+            </button>
+            {state.showDetails && (
+              <div className="mt-2 p-2 bg-black/20 rounded text-xs font-mono max-h-32 overflow-y-auto">
+                <div className="text-gray-300">FFmpeg 错误信息:</div>
+                <div className="text-white whitespace-pre-wrap">{state.details}</div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

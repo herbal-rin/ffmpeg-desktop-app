@@ -58,43 +58,48 @@ export function CodecSelector({ value, onChange, gpuInfo, disabled = false }: Co
   const availableCodecs = getAvailableCodecs();
 
   return (
-    <div className="space-y-2">
-      <label className="label">
-        {t('file.codec')}
-      </label>
-      
-      <select
-        value={value}
-        onChange={(e) => onChange(e.target.value as VideoCodec | 'auto')}
-        disabled={disabled}
-        className="select w-full"
-      >
-        {availableCodecs.map((codec) => (
-          <option
-            key={codec.value}
-            value={codec.value}
-            disabled={!codec.available}
-          >
-            {codec.label} {!codec.available ? '(不可用)' : ''}
-          </option>
-        ))}
-      </select>
-      
-      {/* 显示硬件加速信息 */}
-      {value !== 'auto' && !availableCodecs.find(c => c.value === value)?.available && (
-        <div className="text-sm text-yellow-600 dark:text-yellow-400 flex items-center space-x-1">
-          <span>⚠️</span>
-          <span>{t('gpu.fallback')}</span>
+    <div className="space-y-4">
+      <div>
+        <label className="label">
+          {t('file.codec')}
+        </label>
+        
+        <div className="space-y-2">
+          {availableCodecs.map((codec) => (
+            <label key={codec.value} className="flex items-center space-x-3 cursor-pointer">
+              <input
+                type="radio"
+                name="codec"
+                value={codec.value}
+                checked={value === codec.value}
+                onChange={() => onChange(codec.value)}
+                disabled={disabled || !codec.available}
+                className="radio"
+              />
+              <div className="flex-1">
+                <div className={`font-medium ${!codec.available ? 'text-gray-400' : ''}`}>
+                  {codec.label}
+                </div>
+                {codec.value === 'auto' && (
+                  <div className="text-xs text-gray-500 mt-1">
+                    🚀 优先使用硬件加速，失败时自动回退到软件编码
+                  </div>
+                )}
+                {!codec.available && (
+                  <div className="text-xs text-red-500 mt-1">
+                    ❌ 当前系统不支持此编码器
+                  </div>
+                )}
+                {codec.value !== 'auto' && codec.available && (
+                  <div className="text-xs text-green-600 dark:text-green-400 mt-1">
+                    ✅ 硬件加速支持
+                  </div>
+                )}
+              </div>
+            </label>
+          ))}
         </div>
-      )}
-      
-      {/* 显示硬件加速状态 */}
-      {value !== 'auto' && availableCodecs.find(c => c.value === value)?.available && (
-        <div className="text-sm text-green-600 dark:text-green-400 flex items-center space-x-1">
-          <span>✅</span>
-          <span>{t('gpu.supported')}</span>
-        </div>
-      )}
+      </div>
     </div>
   );
 }
