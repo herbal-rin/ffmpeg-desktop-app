@@ -1,6 +1,11 @@
 import { app, BrowserWindow, Menu, shell } from 'electron';
 import { join } from 'path';
 import { setupIPC } from './ipc';
+import { setupToolsIPC, initializeToolsServices } from './ipc.tools';
+import { PreviewService } from './previewService';
+import { FFprobeService } from '../services/ffmpeg/probe';
+import { ConsoleLogger } from '../services/logger';
+import { configService } from '../services/config';
 
 // 开发环境检测
 const isDev = process.env.NODE_ENV === 'development';
@@ -171,6 +176,26 @@ function createMenu(): void {
 app.whenReady().then(() => {
   // 设置 IPC
   setupIPC();
+  
+  // 初始化工具服务
+  try {
+    const logger = new ConsoleLogger('debug');
+    const ffprobeService = new FFprobeService(configService.getPaths(), logger);
+    const previewService = new PreviewService(logger);
+    
+    initializeToolsServices({
+      previewService,
+      ffprobeService,
+      logger
+    });
+    
+    // 设置工具 IPC
+    setupToolsIPC();
+    
+    logger.info('工具服务初始化成功');
+  } catch (error) {
+    console.error('工具服务初始化失败:', error);
+  }
 
   // 创建主窗口
   createMainWindow();

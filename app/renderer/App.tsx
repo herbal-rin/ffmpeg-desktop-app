@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import { CompressPage } from './pages/CompressPage';
+import { ToolsPage } from './pages/ToolsPage';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useJobsStore } from './store/useJobsStore';
 import { Toast } from './components/Toast';
@@ -10,6 +11,7 @@ import { Toast } from './components/Toast';
 export function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState<'compress' | 'tools'>('compress');
   
   const { theme, language, loadSettings } = useSettingsStore();
   const { initializeQueue } = useJobsStore();
@@ -119,7 +121,49 @@ export function App() {
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
-      <CompressPage />
+      {/* 导航栏 */}
+      <nav className="bg-white dark:bg-gray-800 shadow-sm border-b border-gray-200 dark:border-gray-700">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between h-16">
+            <div className="flex">
+              <div className="flex-shrink-0 flex items-center">
+                <h1 className="text-xl font-bold text-gray-900 dark:text-white">
+                  FFmpeg 视频工具
+                </h1>
+              </div>
+              <div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+                <button
+                  onClick={() => setCurrentPage('compress')}
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    currentPage === 'compress'
+                      ? 'border-blue-500 text-gray-900 dark:text-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  视频压缩
+                </button>
+                <button
+                  onClick={() => setCurrentPage('tools')}
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    currentPage === 'tools'
+                      ? 'border-blue-500 text-gray-900 dark:text-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  小工具
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </nav>
+
+      {/* 页面内容 */}
+      <main>
+        {currentPage === 'compress' && <CompressPage />}
+        {currentPage === 'tools' && <ToolsPage />}
+      </main>
+      
       <Toast />
     </div>
   );

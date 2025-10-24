@@ -13,7 +13,7 @@ export interface ElectronAPI {
   /**
    * 监听主进程事件
    */
-  on(channel: 'queue/events', callback: (payload: QueueEventPayload) => void): () => void;
+  on(channel: 'queue/events' | 'tools/events', callback: (payload: QueueEventPayload | ToolEventPayload) => void): () => void;
 
   /**
    * 监听菜单事件
@@ -30,6 +30,14 @@ export interface ElectronAPI {
 export interface QueueEventPayload {
   type: 'job-start' | 'job-progress' | 'job-done' | 'job-error' | 'job-canceled' | 'queue-empty';
   job?: Job;
+  progress?: Progress;
+  error?: string;
+}
+
+// 工具事件载荷
+export interface ToolEventPayload {
+  type: 'preview-start' | 'preview-progress' | 'preview-done' | 'preview-error' | 'preview-cancelled';
+  tempPath?: string;
   progress?: Progress;
   error?: string;
 }
@@ -56,7 +64,13 @@ export type IPCChannel =
   | 'dialog/select-subtitle'
   | 'shell/open-path'
   | 'file/save-temp'
-  | 'file/cleanup-temp';
+  | 'file/cleanup-temp'
+  | 'tools/trim/preview'
+  | 'tools/trim/export'
+  | 'tools/gif/preview'
+  | 'tools/gif/export'
+  | 'tools/audio/extract'
+  | 'tools/preview/cancel';
 
 // IPC 请求/响应类型
 export interface ProbeRequest {
@@ -185,6 +199,75 @@ export type {
   JobStatus,
   FfmpegPaths
 } from '../shared/types';
+
+// 工具相关类型
+export interface TrimPreviewRequest {
+  input: string;
+  range: { startSec: number; endSec: number };
+  previewSeconds?: number;
+  scaleHalf?: boolean;
+}
+
+export interface TrimPreviewResponse {
+  previewPath: string;
+}
+
+export interface TrimExportRequest {
+  input: string;
+  range: { startSec: number; endSec: number };
+  mode: 'lossless' | 'precise';
+  container: 'mp4' | 'mkv';
+  videoCodec?: string;
+  audio: 'copy' | 'encode';
+  outputDir: string;
+  outputName?: string;
+}
+
+export interface TrimExportResponse {
+  output: string;
+}
+
+export interface GifPreviewRequest {
+  input: string;
+  range: { startSec: number; endSec: number };
+  fps: number;
+  maxWidth?: number;
+  dithering?: 'bayer' | 'floyd';
+  outputDir?: string;
+  outputName?: string;
+}
+
+export interface GifPreviewResponse {
+  previewPath: string;
+}
+
+export interface GifExportRequest extends GifPreviewRequest {
+  outputDir: string;
+}
+
+export interface GifExportResponse {
+  output: string;
+}
+
+export interface AudioExtractRequest {
+  input: string;
+  range?: { startSec: number; endSec: number };
+  mode: 'copy' | 'encode';
+  codec?: 'aac' | 'libmp3lame' | 'flac' | 'libopus';
+  bitrateK?: number;
+  outputDir: string;
+  outputName?: string;
+}
+
+export interface AudioExtractResponse {
+  output: string;
+}
+
+export interface PreviewCancelRequest {}
+
+export interface PreviewCancelResponse {
+  ok: boolean;
+}
 
 // 全局类型声明
 declare global {

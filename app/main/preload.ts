@@ -14,7 +14,7 @@ const api = {
   /**
    * 监听主进程事件
    */
-  on: (channel: 'queue/events', callback: (payload: any) => void): (() => void) => {
+  on: (channel: 'queue/events' | 'tools/events', callback: (payload: any) => void): (() => void) => {
     const handler = (_event: any, payload: any) => callback(payload);
     ipcRenderer.on(channel, handler);
     
