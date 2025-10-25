@@ -34,10 +34,15 @@ vi.mock('uuid', () => ({
 describe('PreviewService', () => {
   let previewService: PreviewService;
   let mockLogger: ConsoleLogger;
+  let mockFfmpegPaths: any;
 
   beforeEach(() => {
     mockLogger = new ConsoleLogger('debug');
-    previewService = new PreviewService(mockLogger);
+    mockFfmpegPaths = {
+      ffmpeg: '/usr/bin/ffmpeg',
+      ffprobe: '/usr/bin/ffprobe'
+    };
+    previewService = new PreviewService(mockLogger, mockFfmpegPaths);
   });
 
   afterEach(() => {

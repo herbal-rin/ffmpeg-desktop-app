@@ -11,6 +11,7 @@ import { GifPanel } from '../components/GifPanel';
 import { AudioExtractPanel } from '../components/AudioExtractPanel';
 import { PreviewBar } from '../components/PreviewBar';
 import { Toast } from '../components/Toast';
+import { useDebouncedCallback } from '../hooks/useDebouncedValue';
 
 export const ToolsPage: React.FC = () => {
   const {
@@ -46,7 +47,7 @@ export const ToolsPage: React.FC = () => {
 
   // 监听工具事件
   useEffect(() => {
-    const unsubscribe = window.api.on('tools/events', (payload) => {
+    const handleToolsEvent = (payload: any) => {
       switch (payload.type) {
         case 'preview-start':
           setIsPreviewing(true);
@@ -89,9 +90,16 @@ export const ToolsPage: React.FC = () => {
           });
           break;
       }
-    });
+    };
 
-    return unsubscribe;
+    const unsubscribe = window.api.on('tools/events', handleToolsEvent);
+
+    // 组件卸载时清理事件监听
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [setIsPreviewing, setPreviewProgress, setPreviewPath]);
 
   // 处理文件选择
@@ -151,7 +159,38 @@ export const ToolsPage: React.FC = () => {
     }
   };
 
-  // 生成预览
+  // 生成预览（防抖版本）
+  const handlePreviewDebounced = useDebouncedCallback(async (type: 'trim' | 'gif') => {
+    if (!selectedFile) return;
+
+    try {
+      if (type === 'trim') {
+        await window.api.invoke('tools/trim/preview', {
+          input: selectedFile.tempPath,
+          range: timeRange,
+          previewSeconds: 8,
+          scaleHalf: true
+        });
+      } else if (type === 'gif') {
+        await window.api.invoke('tools/gif/preview', {
+          input: selectedFile.tempPath,
+          range: timeRange,
+          fps: gifFps,
+          maxWidth: gifMaxWidth,
+          dithering: gifDithering
+        });
+      }
+    } catch (error) {
+      setToast({
+        show: true,
+        message: '预览生成失败',
+        type: 'error',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }, 400); // 400ms 防抖
+
+  // 生成预览（立即执行版本，用于手动点击）
   const handlePreview = async (type: 'trim' | 'gif') => {
     if (!selectedFile) return;
 
@@ -343,7 +382,7 @@ export const ToolsPage: React.FC = () => {
         {/* 预览操作栏 */}
         <div className="mb-6">
           <PreviewBar
-            onPreview={handlePreview}
+            onPreview={handlePreviewDebounced}
             onExport={handleExport}
             onCancel={handleCancel}
           />

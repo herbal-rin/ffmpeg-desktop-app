@@ -53,6 +53,7 @@ export interface AudioExtractOptions {
   mode: 'copy' | 'encode';
   codec?: 'aac' | 'libmp3lame' | 'flac' | 'libopus'; // encode 必填
   bitrateK?: number;                // encode 时可选
+  audioTrack?: number;              // 音轨索引，默认 0
   outputDir: string;
   outputName?: string;
 }

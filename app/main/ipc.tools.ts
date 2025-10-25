@@ -1,4 +1,4 @@
-/**
+ /**
  * 工具相关 IPC 处理器
  */
 
@@ -7,11 +7,12 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import * as crypto from 'crypto';
-import { Logger } from '../shared/types';
+import { Logger, FfmpegPaths } from '../shared/types';
 import { PreviewService } from './previewService';
 import { PathEscapeUtils } from '../services/ffmpeg/pathEscapeUtils';
 import { ArgsBuilder } from '../services/ffmpeg/argsBuilder';
 import { FFprobeService } from '../services/ffmpeg/probe';
+import { MuxingValidator } from '../services/ffmpeg/muxingValidator';
 import { 
   TrimPreviewRequest, TrimPreviewResponse,
   TrimExportRequest, TrimExportResponse,
@@ -26,6 +27,7 @@ import {
 let previewService: PreviewService | null = null;
 let ffprobeService: FFprobeService | null = null;
 let logger: Logger | null = null;
+let ffmpegPaths: FfmpegPaths | null = null;
 
 /**
  * 初始化工具服务
@@ -34,10 +36,12 @@ export function initializeToolsServices(services: {
   previewService: PreviewService;
   ffprobeService: FFprobeService;
   logger: Logger;
+  ffmpegPaths: FfmpegPaths;
 }) {
   previewService = services.previewService;
   ffprobeService = services.ffprobeService;
   logger = services.logger;
+  ffmpegPaths = services.ffmpegPaths;
 }
 
 /**
@@ -66,6 +70,138 @@ function validateTimeRange(range: TimeRange, duration: number): { valid: boolean
   }
   
   return { valid: true };
+}
+
+/**
+ * 尝试无损快剪，失败时自动回退到精准剪
+ */
+async function tryLosslessThenPrecise(
+  request: TrimExportRequest,
+  args: string[],
+  outputPath: string,
+  tempPath: string
+): Promise<TrimExportResponse> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      // 首先尝试无损快剪
+      const success = await executeFFmpegCommand(args);
+      
+      if (success) {
+        // 无损快剪成功
+        fs.renameSync(tempPath, outputPath);
+        logger!.info('无损快剪导出完成', { outputPath });
+        resolve({ output: outputPath });
+        return;
+      }
+
+      // 无损快剪失败，清理临时文件
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
+
+      // 检查是否原本就是无损模式
+      const isLosslessMode = request.mode === 'lossless';
+      
+      if (isLosslessMode) {
+        logger!.warn('无损快剪失败，自动切换到精准剪', { 
+          reason: '容器/编解码器不兼容或关键帧问题',
+          originalMode: 'lossless',
+          fallbackMode: 'precise'
+        });
+
+        // 构建精准剪参数
+        const preciseArgs = buildPreciseTrimArgs(request, tempPath);
+        
+        // 尝试精准剪
+        const preciseSuccess = await executeFFmpegCommand(preciseArgs);
+        
+        if (preciseSuccess) {
+          fs.renameSync(tempPath, outputPath);
+          logger!.info('精准剪导出完成（无损快剪失败后的回退）', { outputPath });
+          resolve({ output: outputPath });
+        } else {
+          reject(new Error('无损快剪和精准剪都失败了，请检查输入文件或调整参数'));
+        }
+      } else {
+        // 原本就是精准剪模式，直接失败
+        reject(new Error('精准剪导出失败，请检查输入文件或调整参数'));
+      }
+    } catch (error) {
+      reject(error);
+    }
+  });
+}
+
+/**
+ * 执行 FFmpeg 命令
+ */
+async function executeFFmpegCommand(args: string[]): Promise<boolean> {
+  return new Promise((resolve) => {
+    const process = spawn(ffmpegPaths!.ffmpeg, args, {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      shell: false,
+      windowsHide: true,
+      detached: false
+    });
+
+    process.on('close', (code) => {
+      resolve(code === 0);
+    });
+
+    process.on('error', () => {
+      resolve(false);
+    });
+  });
+}
+
+/**
+ * 构建精准剪参数
+ */
+function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): string[] {
+  if (!request.videoCodec) {
+    throw new Error('精准剪模式需要指定视频编码器');
+  }
+
+  const videoArgs = ArgsBuilder.buildVideoArgs(
+    request.videoCodec,
+    { name: 'balanced', args: [] },
+    request.container,
+    request.audio
+  );
+
+  const args = [
+    '-y',
+    '-ss', request.range.startSec.toString(),
+    '-accurate_seek',
+    '-i', PathEscapeUtils.escapeInputPath(request.input),
+    '-to', (request.range.endSec - request.range.startSec).toString(),
+    ...videoArgs,
+    '-force_key_frames', 'expr:gte(t,0)',
+    tempPath
+  ];
+
+  if (request.container === 'mp4') {
+    args.splice(-1, 0, '-movflags', '+faststart');
+  }
+
+  return args;
+}
+
+/**
+ * 清理临时目录
+ */
+function cleanupTempDirectory(tempDir: string): void {
+  try {
+    if (fs.existsSync(tempDir)) {
+      fs.rmSync(tempDir, { recursive: true, force: true });
+      logger!.debug('清理临时目录', { tempDir });
+    }
+  } catch (error) {
+    logger!.warn('清理临时目录失败', { 
+      tempDir, 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+  }
 }
 
 /**
@@ -153,6 +289,33 @@ export function setupToolsIPC() {
         throw new Error(validation.error);
       }
 
+      // 验证容器/编解码器兼容性
+      const muxingValidation = MuxingValidator.validateMuxing({
+        container: request.container,
+        videoCodec: request.videoCodec,
+        audio: request.audio
+      });
+
+      if (!muxingValidation.valid) {
+        throw new Error(`ERR_BAD_OPTIONS: ${muxingValidation.error}`);
+      }
+
+      // 检查是否适合无损快剪
+      const isLosslessSuitable = MuxingValidator.isSuitableForLossless({
+        container: request.container,
+        videoCodec: request.videoCodec,
+        audio: request.audio
+      });
+
+      // 如果用户选择无损但条件不满足，建议使用精准剪
+      if (request.mode === 'lossless' && !isLosslessSuitable) {
+        logger!.warn('无损快剪条件不满足，建议使用精准剪', { 
+          container: request.container,
+          videoCodec: request.videoCodec,
+          audio: request.audio
+        });
+      }
+
       // 生成输出文件名
       const outputName = request.outputName || `trimmed_${Date.now()}.${request.container}`;
       const outputPath = getUniqueOutputPath(request.outputDir, outputName);
@@ -160,14 +323,15 @@ export function setupToolsIPC() {
 
       let args: string[];
 
-      if (request.mode === 'lossless') {
-        // 无损快剪
+      if (request.mode === 'lossless' && isLosslessSuitable) {
+        // 无损快剪：-ss 前置，添加 -map 0 和 -avoid_negative_ts make_zero
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
           '-to', request.range.endSec.toString(),
           '-i', PathEscapeUtils.escapeInputPath(request.input),
           '-c', 'copy',
+          '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
           tempPath
         ];
@@ -187,65 +351,24 @@ export function setupToolsIPC() {
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
-          '-to', request.range.endSec.toString(),
+          '-accurate_seek', // 精准定位
           '-i', PathEscapeUtils.escapeInputPath(request.input),
+          '-to', (request.range.endSec - request.range.startSec).toString(), // 使用持续时间
           ...videoArgs,
+          '-force_key_frames', 'expr:gte(t,0)', // 强制关键帧
           tempPath
         ];
 
         // MP4 优化
         if (request.container === 'mp4') {
-          args.push('-movflags', '+faststart');
+          args.splice(-1, 0, '-movflags', '+faststart');
         }
       }
 
       logger!.info('开始视频裁剪导出', { args });
 
-      return new Promise((resolve, reject) => {
-        const process = spawn('ffmpeg', args, {
-          stdio: ['ignore', 'pipe', 'pipe'],
-          shell: false,
-          windowsHide: true,
-          detached: false
-        });
-
-        process.on('close', (code) => {
-          if (code === 0) {
-            try {
-              fs.renameSync(tempPath, outputPath);
-              logger!.info('视频裁剪导出完成', { outputPath });
-              resolve({ output: outputPath } as TrimExportResponse);
-            } catch (error) {
-              logger!.error('重命名输出文件失败', { 
-                tempPath, 
-                outputPath, 
-                error: error instanceof Error ? error.message : String(error) 
-              });
-              reject(new Error('重命名输出文件失败'));
-            }
-          } else {
-            // 清理临时文件
-            if (fs.existsSync(tempPath)) {
-              fs.unlinkSync(tempPath);
-            }
-            const error = new Error(`视频裁剪导出失败，退出码: ${code}`);
-            logger!.error('视频裁剪导出失败', { code, tempPath });
-            reject(error);
-          }
-        });
-
-        process.on('error', (error) => {
-          // 清理临时文件
-          if (fs.existsSync(tempPath)) {
-            fs.unlinkSync(tempPath);
-          }
-          logger!.error('视频裁剪导出进程启动失败', { 
-            error: error.message,
-            tempPath 
-          });
-          reject(error);
-        });
-      });
+      // 尝试无损快剪，失败时自动回退到精准剪
+      return tryLosslessThenPrecise(request, args, outputPath, tempPath);
     } catch (error) {
       logger!.error('视频裁剪导出失败', { 
         error: error instanceof Error ? error.message : String(error),
@@ -339,13 +462,20 @@ export function setupToolsIPC() {
         throw new Error('最大宽度必须在 128-2048 之间');
       }
 
-      // 生成输出文件名
+      // 生成输出文件名和临时目录
       const outputName = request.outputName || `gif_${Date.now()}.gif`;
       const outputPath = getUniqueOutputPath(request.outputDir, outputName);
-      const palettePath = path.join(request.outputDir, `${crypto.randomUUID()}_palette.png`);
       const tempPath = `${outputPath}.tmp`;
+      
+      // 创建专用的临时目录用于调色板
+      const jobId = crypto.randomUUID();
+      const tempDir = path.join(request.outputDir, 'temp', jobId);
+      const palettePath = path.join(tempDir, 'palette.png');
+      
+      // 确保临时目录存在
+      fs.mkdirSync(tempDir, { recursive: true });
 
-      logger!.info('开始 GIF 导出', { request });
+      logger!.info('开始 GIF 导出', { request, tempDir });
 
       return new Promise(async (resolve, reject) => {
         try {
@@ -356,10 +486,12 @@ export function setupToolsIPC() {
             '-to', request.range.endSec.toString(),
             '-i', PathEscapeUtils.escapeInputPath(request.input),
             '-vf', `fps=${request.fps},scale='min(${request.maxWidth || 640},iw)':-1:flags=lanczos,palettegen=max_colors=128`,
-            palettePath
+            PathEscapeUtils.escapeOutputPath(palettePath)
           ];
 
-          const paletteProcess = spawn('ffmpeg', paletteArgs, {
+          logger!.info('生成调色板', { args: paletteArgs });
+
+          const paletteProcess = spawn(ffmpegPaths!.ffmpeg, paletteArgs, {
             stdio: ['ignore', 'pipe', 'pipe'],
             shell: false,
             windowsHide: true,
@@ -384,12 +516,15 @@ export function setupToolsIPC() {
             '-ss', request.range.startSec.toString(),
             '-to', request.range.endSec.toString(),
             '-i', PathEscapeUtils.escapeInputPath(request.input),
-            '-i', palettePath,
+            '-i', PathEscapeUtils.escapeInputPath(palettePath),
             '-lavfi', `fps=${request.fps},scale='min(${request.maxWidth || 640},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${request.dithering || 'bayer'}:bayer_scale=5`,
-            tempPath
+            '-loop', '0', // 无限循环
+            PathEscapeUtils.escapeOutputPath(tempPath)
           ];
 
-          const gifProcess = spawn('ffmpeg', gifArgs, {
+          logger!.info('生成 GIF', { args: gifArgs });
+
+          const gifProcess = spawn(ffmpegPaths!.ffmpeg, gifArgs, {
             stdio: ['ignore', 'pipe', 'pipe'],
             shell: false,
             windowsHide: true,
@@ -397,10 +532,8 @@ export function setupToolsIPC() {
           });
 
           gifProcess.on('close', (code) => {
-            // 清理调色板文件
-            if (fs.existsSync(palettePath)) {
-              fs.unlinkSync(palettePath);
-            }
+            // 清理临时目录（包含调色板文件）
+            cleanupTempDirectory(tempDir);
 
             if (code === 0) {
               try {
@@ -427,13 +560,11 @@ export function setupToolsIPC() {
           });
 
           gifProcess.on('error', (error) => {
-            // 清理临时文件
+            // 清理临时文件和目录
             if (fs.existsSync(tempPath)) {
               fs.unlinkSync(tempPath);
             }
-            if (fs.existsSync(palettePath)) {
-              fs.unlinkSync(palettePath);
-            }
+            cleanupTempDirectory(tempDir);
             logger!.error('GIF 导出进程启动失败', { 
               error: error.message,
               tempPath 
@@ -491,11 +622,17 @@ export function setupToolsIPC() {
           throw new Error('编码模式需要指定音频编码器');
         }
 
-        if (request.codec === 'libmp3lame' || request.codec === 'aac') {
-          if (!request.bitrateK || request.bitrateK < 48 || request.bitrateK > 320) {
-            throw new Error('MP3/AAC 码率必须在 48-320 kbps 之间');
-          }
+        // 验证码率范围
+        const recommendedBitrate = MuxingValidator.getRecommendedBitrate(request.codec);
+        if (recommendedBitrate > 0 && (!request.bitrateK || request.bitrateK < 48 || request.bitrateK > 320)) {
+          throw new Error(`${request.codec} 码率必须在 48-320 kbps 之间`);
         }
+      }
+
+      // 验证音轨选择
+      const audioTrack = request.audioTrack || 0;
+      if (audioTrack < 0) {
+        throw new Error('音轨索引不能为负数');
       }
 
       // 生成输出文件名
@@ -518,7 +655,9 @@ export function setupToolsIPC() {
       }
 
       args.push('-i', PathEscapeUtils.escapeInputPath(request.input));
-      args.push('-map', 'a'); // 只提取音频
+      
+      // 音轨选择：默认 a:0，支持指定音轨
+      args.push('-map', `0:a:${audioTrack}`);
 
       if (request.mode === 'copy') {
         args.push('-c:a', 'copy');
@@ -534,7 +673,7 @@ export function setupToolsIPC() {
       logger!.info('开始音频提取', { args });
 
       return new Promise((resolve, reject) => {
-        const process = spawn('ffmpeg', args, {
+        const process = spawn(ffmpegPaths!.ffmpeg, args, {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: false,
           windowsHide: true,

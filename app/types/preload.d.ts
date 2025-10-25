@@ -255,6 +255,7 @@ export interface AudioExtractRequest {
   mode: 'copy' | 'encode';
   codec?: 'aac' | 'libmp3lame' | 'flac' | 'libopus';
   bitrateK?: number;
+  audioTrack?: number;  // 音轨索引，默认 0
   outputDir: string;
   outputName?: string;
 }

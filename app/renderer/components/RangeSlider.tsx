@@ -47,9 +47,16 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
     const startSec = parseHMSms(value);
     
     if (duration > 0) {
-      const validation = validateTimeRange({ startSec, endSec: timeRange.endSec }, duration);
+      // 确保开始时间不超过结束时间
+      const maxStart = Math.max(0, timeRange.endSec - 0.5); // 最小区间0.5秒
+      const clampedStart = Math.min(startSec, maxStart);
+      
+      const validation = validateTimeRange({ startSec: clampedStart, endSec: timeRange.endSec }, duration);
       if (validation.valid) {
-        setTimeRange({ startSec, endSec: timeRange.endSec });
+        setTimeRange({ startSec: clampedStart, endSec: timeRange.endSec });
+      } else {
+        // 如果输入无效，回退到有效值
+        setStartTimeStr(toHMSms(timeRange.startSec));
       }
     }
   };
@@ -59,22 +66,37 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
     const endSec = parseHMSms(value);
     
     if (duration > 0) {
-      const validation = validateTimeRange({ startSec: timeRange.startSec, endSec }, duration);
+      // 确保结束时间不小于开始时间
+      const minEnd = Math.min(duration, timeRange.startSec + 0.5); // 最小区间0.5秒
+      const clampedEnd = Math.max(endSec, minEnd);
+      
+      const validation = validateTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd }, duration);
       if (validation.valid) {
-        setTimeRange({ startSec: timeRange.startSec, endSec });
+        setTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd });
+      } else {
+        // 如果输入无效，回退到有效值
+        setEndTimeStr(toHMSms(timeRange.endSec));
       }
     }
   };
 
   const handleSliderChange = (type: 'start' | 'end', value: number) => {
+    const minInterval = 0.5; // 最小区间0.5秒
+    
     if (type === 'start') {
-      const newRange = { startSec: value, endSec: timeRange.endSec };
-      if (value < timeRange.endSec) {
+      const maxStart = Math.max(0, timeRange.endSec - minInterval);
+      const clampedStart = Math.min(value, maxStart);
+      const newRange = { startSec: clampedStart, endSec: timeRange.endSec };
+      
+      if (clampedStart < timeRange.endSec) {
         setTimeRange(newRange);
       }
     } else {
-      const newRange = { startSec: timeRange.startSec, endSec: value };
-      if (value > timeRange.startSec) {
+      const minEnd = Math.min(duration, timeRange.startSec + minInterval);
+      const clampedEnd = Math.max(value, minEnd);
+      const newRange = { startSec: timeRange.startSec, endSec: clampedEnd };
+      
+      if (clampedEnd > timeRange.startSec) {
         setTimeRange(newRange);
       }
     }

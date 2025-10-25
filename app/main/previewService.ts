@@ -9,18 +9,21 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as os from 'os';
 import * as crypto from 'crypto';
-import { Logger } from '../shared/types';
+import { Logger, FfmpegPaths } from '../shared/types';
 import { ProgressParser } from '../services/ffmpeg/progressParser';
 import { PathEscapeUtils } from '../services/ffmpeg/pathEscapeUtils';
+import { killProcessTree } from './windowsKillTree';
 
 export class PreviewService extends EventEmitter {
   private currentProcess: ChildProcess | null = null;
   private tempDir: string;
   private logger: Logger;
+  private ffmpegPaths: FfmpegPaths;
 
-  constructor(logger: Logger) {
+  constructor(logger: Logger, ffmpegPaths: FfmpegPaths) {
     super();
     this.logger = logger;
+    this.ffmpegPaths = ffmpegPaths;
     this.tempDir = path.join(os.homedir(), 'Documents', 'FFmpegApp', 'temp', 'previews');
     this.ensureTempDir();
     this.cleanupOldPreviews();
@@ -69,33 +72,8 @@ export class PreviewService extends EventEmitter {
     try {
       this.logger.info('取消预览任务', { pid: this.currentProcess.pid });
       
-      // 发送 SIGTERM
-      this.currentProcess.kill('SIGTERM');
-      
-      // 等待 3 秒
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      // 如果进程仍然存在，强制终止
-      if (!this.currentProcess.killed) {
-        if (process.platform === 'win32') {
-          // Windows 使用 taskkill
-          const { spawn } = await import('child_process');
-          const taskkill = spawn('taskkill', ['/PID', this.currentProcess.pid!.toString(), '/T', '/F'], {
-            stdio: 'ignore',
-            shell: false,
-            windowsHide: true
-          });
-          
-          taskkill.on('close', (code) => {
-            if (code === 0) {
-              this.logger.debug('Windows 预览进程已强制终止', { pid: this.currentProcess!.pid });
-            }
-          });
-        } else {
-          // Unix 系统使用 SIGKILL
-          this.currentProcess.kill('SIGKILL');
-        }
-      }
+      // 使用跨平台进程树清理
+      await killProcessTree(this.currentProcess.pid!, this.logger, 3000);
       
       this.currentProcess = null;
       this.emit('preview-cancelled');
@@ -132,12 +110,14 @@ export class PreviewService extends EventEmitter {
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-crf', '28',
+      '-avoid_negative_ts', 'make_zero', // 避免负时间戳
       '-an', // 移除音频以加快预览
       '-progress', 'pipe:1',
       '-nostats',
       tempPath
     ];
 
+    // 添加缩放滤镜（如果启用）
     if (scaleHalf) {
       args.splice(-2, 0, '-vf', 'scale=iw/2:-1');
     }
@@ -145,7 +125,7 @@ export class PreviewService extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.logger.info('开始生成视频预览', { input, range, duration, args });
       
-      this.currentProcess = spawn('ffmpeg', args, {
+      this.currentProcess = spawn(this.ffmpegPaths.ffmpeg, args, {
         stdio: ['ignore', 'pipe', 'pipe'],
         shell: false,
         windowsHide: true,
@@ -231,6 +211,14 @@ export class PreviewService extends EventEmitter {
     // 取消当前任务
     await this.cancelPreview();
 
+    // 限制预览时长（最多10秒）
+    const maxPreviewDuration = 10;
+    const actualDuration = Math.min(range.endSec - range.startSec, maxPreviewDuration);
+    const previewRange = {
+      startSec: range.startSec,
+      endSec: range.startSec + actualDuration
+    };
+
     const outputPath = path.join(this.tempDir, `${crypto.randomUUID()}.gif`);
     const palettePath = path.join(this.tempDir, `${crypto.randomUUID()}_palette.png`);
     const tempPath = `${outputPath}.tmp`;
@@ -240,16 +228,16 @@ export class PreviewService extends EventEmitter {
         // 第一步：生成调色板
         const paletteArgs = [
           '-y',
-          '-ss', range.startSec.toString(),
-          '-to', range.endSec.toString(),
+          '-ss', previewRange.startSec.toString(),
+          '-to', previewRange.endSec.toString(),
           '-i', PathEscapeUtils.escapeInputPath(input),
           '-vf', `fps=${fps},scale='min(${maxWidth},iw)':-1:flags=lanczos,palettegen=max_colors=128`,
-          palettePath
+          PathEscapeUtils.escapeOutputPath(palettePath)
         ];
 
-        this.logger.info('开始生成 GIF 调色板', { paletteArgs });
+        this.logger.info('开始生成 GIF 调色板', { paletteArgs, previewDuration: actualDuration });
 
-        const paletteProcess = spawn('ffmpeg', paletteArgs, {
+        const paletteProcess = spawn(this.ffmpegPaths.ffmpeg, paletteArgs, {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: false,
           windowsHide: true,
@@ -271,19 +259,20 @@ export class PreviewService extends EventEmitter {
         // 第二步：应用调色板生成 GIF
         const gifArgs = [
           '-y',
-          '-ss', range.startSec.toString(),
-          '-to', range.endSec.toString(),
+          '-ss', previewRange.startSec.toString(),
+          '-to', previewRange.endSec.toString(),
           '-i', PathEscapeUtils.escapeInputPath(input),
-          '-i', palettePath,
+          '-i', PathEscapeUtils.escapeInputPath(palettePath),
           '-lavfi', `fps=${fps},scale='min(${maxWidth},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${dithering}:bayer_scale=5`,
+          '-loop', '0', // 无限循环
           '-progress', 'pipe:1',
           '-nostats',
-          tempPath
+          PathEscapeUtils.escapeOutputPath(tempPath)
         ];
 
         this.logger.info('开始生成 GIF', { gifArgs });
 
-        this.currentProcess = spawn('ffmpeg', gifArgs, {
+        this.currentProcess = spawn(this.ffmpegPaths.ffmpeg, gifArgs, {
           stdio: ['ignore', 'pipe', 'pipe'],
           shell: false,
           windowsHide: true,

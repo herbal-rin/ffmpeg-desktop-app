@@ -180,13 +180,15 @@ app.whenReady().then(() => {
   // 初始化工具服务
   try {
     const logger = new ConsoleLogger('debug');
-    const ffprobeService = new FFprobeService(configService.getPaths(), logger);
-    const previewService = new PreviewService(logger);
+    const ffmpegPaths = configService.getPaths();
+    const ffprobeService = new FFprobeService(ffmpegPaths, logger);
+    const previewService = new PreviewService(logger, ffmpegPaths);
     
     initializeToolsServices({
       previewService,
       ffprobeService,
-      logger
+      logger,
+      ffmpegPaths
     });
     
     // 设置工具 IPC
