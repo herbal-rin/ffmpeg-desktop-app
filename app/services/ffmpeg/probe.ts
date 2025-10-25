@@ -119,10 +119,10 @@ export class FFprobeService {
 
       return {
         durationSec,
-        width,
-        height,
+        width: width || 0,
+        height: height || 0,
         streams: streamInfo,
-        formatName: format.format_name
+        formatName: format.format_name || 'unknown'
       };
     } catch (error) {
       throw new Error(`解析 FFprobe 输出失败: ${error instanceof Error ? error.message : String(error)}`);

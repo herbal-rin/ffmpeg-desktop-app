@@ -91,6 +91,45 @@ export class FfmpegService {
       const process = this.spawnProcess(this.paths.ffmpeg, args);
       this.activeProcesses.set(process.pid!, process);
 
+      // 立即返回PID，不等待完成
+      const pid = process.pid!;
+      
+      // 异步处理完成逻辑
+      this.handleTranscodeCompletion(process, job, tempOutputPath, finalOutputPath, totalDurationMs, onProgress)
+        .catch((error) => {
+          this.logger.error('转码任务处理失败', {
+            jobId: job.id,
+            error: error instanceof Error ? error.message : String(error)
+          });
+        });
+
+      return pid;
+
+    } catch (error) {
+      this.logger.error('转码任务失败', {
+        jobId: job.id,
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      // 清理临时文件
+      this.cleanupTempFile(tempOutputPath, job.id);
+
+      throw error;
+    }
+  }
+
+  /**
+   * 处理转码完成逻辑
+   */
+  private async handleTranscodeCompletion(
+    process: ChildProcess,
+    job: Job,
+    tempOutputPath: string,
+    finalOutputPath: string,
+    totalDurationMs: number,
+    onProgress: (progress: Progress) => void
+  ): Promise<void> {
+    try {
       // 监听进度
       this.setupProgressListener(process, totalDurationMs, onProgress);
 
@@ -112,18 +151,15 @@ export class FfmpegService {
         output: finalOutputPath
       });
 
-      // 返回进程PID
-      return process.pid!;
-
     } catch (error) {
-      this.logger.error('转码任务失败', {
+      this.logger.error('转码任务处理失败', {
         jobId: job.id,
         error: error instanceof Error ? error.message : String(error)
       });
-
+      
       // 清理临时文件
       this.cleanupTempFile(tempOutputPath, job.id);
-
+      
       throw error;
     } finally {
       // 清理进程记录

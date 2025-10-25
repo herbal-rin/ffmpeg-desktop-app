@@ -9,7 +9,8 @@ interface ToastProps {
   type?: 'success' | 'error' | 'warning' | 'info';
   duration?: number;
   onClose?: () => void;
-  details?: string; // 错误详情
+  details?: string | undefined; // 错误详情
+  show?: boolean; // 显示状态
 }
 
 /**
@@ -19,14 +20,14 @@ interface ToastState {
   visible: boolean;
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
-  details?: string;
+  details?: string | undefined;
   showDetails: boolean;
 }
 
 /**
  * Toast 组件
  */
-export function Toast({ message, type = 'info', duration = 3000, onClose, details }: ToastProps) {
+export function Toast({ message, type = 'info', duration = 3000, onClose, details, show = false }: ToastProps) {
   const [state, setState] = React.useState<ToastState>({
     visible: false,
     message: '',

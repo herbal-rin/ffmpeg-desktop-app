@@ -93,7 +93,7 @@ export class ProgressParser {
       ratio,
       timeMs,
       speed,
-      bitrate: partial.bitrate || undefined,
+      bitrate: partial.bitrate || '',
       etaSec
     };
   }

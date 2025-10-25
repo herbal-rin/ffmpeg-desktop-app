@@ -307,20 +307,7 @@ export class JobQueue extends EventEmitter {
           this.activePid = pid;
           this.logger.info('任务已启动', { jobId: job.id, pid });
           
-          // 等待任务完成
-          return new Promise<void>((innerResolve) => {
-            const checkCompletion = () => {
-              if (job.status === 'completed' || job.status === 'failed' || job.status === 'canceled') {
-                this.activePid = null; // 清理PID
-                innerResolve();
-              } else {
-                setTimeout(checkCompletion, 100); // 每100ms检查一次
-              }
-            };
-            checkCompletion();
-          });
-        })
-        .then(() => {
+          // 直接完成，不需要轮询等待
           job.status = 'completed';
           job.finishedAt = Date.now();
           this.logger.info('任务执行完成', {
@@ -328,10 +315,19 @@ export class JobQueue extends EventEmitter {
             duration: job.finishedAt - (job.startedAt || job.createdAt)
           });
           this.emit('job-done', { job });
+          this.activePid = null; // 清理PID
           resolve();
         })
         .catch((error) => {
           this.activePid = null; // 清理PID
+          job.status = 'failed';
+          job.finishedAt = Date.now();
+          job.error = error instanceof Error ? error.message : String(error);
+          this.logger.error('任务执行失败', {
+            jobId: job.id,
+            error: job.error
+          });
+          this.emit('job-failed', { job, error });
           reject(error);
         });
     });

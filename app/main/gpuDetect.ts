@@ -158,7 +158,7 @@ export class GPUDetector {
       const trimmed = line.trim();
       if (trimmed && trimmed.includes('_nvenc') || trimmed.includes('_qsv') || trimmed.includes('_videotoolbox')) {
         const parts = trimmed.split(/\s+/);
-        if (parts.length > 1) {
+        if (parts.length > 1 && parts[1]) {
           encoders.push(parts[1]);
         }
       }

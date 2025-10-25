@@ -165,7 +165,7 @@ export class SettingsIPC {
         });
         
         if (!result.canceled && result.filePaths.length > 0) {
-          const selectedPath = result.filePaths[0];
+          const selectedPath = result.filePaths[0]!;
           
           // 验证目录可写
           if (this.isDirectoryWritable(selectedPath)) {
@@ -195,7 +195,7 @@ export class SettingsIPC {
         });
         
         if (!result.canceled && result.filePaths.length > 0) {
-          const selectedPath = result.filePaths[0];
+          const selectedPath = result.filePaths[0]!;
           
           // 验证FFmpeg可执行
           const isValid = await this.ffmpegManager.verifyFFmpeg(selectedPath);
@@ -226,7 +226,7 @@ export class SettingsIPC {
         });
         
         if (!result.canceled && result.filePaths.length > 0) {
-          const selectedPath = result.filePaths[0];
+          const selectedPath = result.filePaths[0]!;
           
           // 验证FFprobe可执行
           const isValid = await this.ffmpegManager.verifyFFmpeg(selectedPath);

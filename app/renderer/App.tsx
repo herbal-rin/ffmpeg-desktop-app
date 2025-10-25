@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CompressPage } from './pages/CompressPage';
 import { ToolsPage } from './pages/ToolsPage';
 import { SettingsPage } from './pages/SettingsPage';
@@ -31,7 +31,7 @@ export function App() {
     document.documentElement.lang = language;
   }, [language]);
 
-  const initializeApp = async () => {
+  const initializeApp = async (): Promise<void> => {
     try {
       setIsLoading(true);
       setError(null);
@@ -53,10 +53,11 @@ export function App() {
       });
 
       // 清理函数
-      return () => {
+      const cleanup = () => {
         unsubscribeMenu();
         unsubscribeApp();
       };
+      return cleanup;
     } catch (err) {
       console.error('应用初始化失败:', err);
       setError(err instanceof Error ? err.message : '未知错误');

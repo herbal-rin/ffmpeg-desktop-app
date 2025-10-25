@@ -133,7 +133,7 @@ export class FFmpegManager extends EventEmitter {
       childProcess.on('close', (code: number) => {
         if (code === 0 && output.trim()) {
           const path = output.trim().split('\n')[0];
-          resolve(path);
+          resolve(path || null);
         } else {
           resolve(null);
         }
@@ -378,7 +378,7 @@ export class FFmpegManager extends EventEmitter {
     if (task) {
       task.status = phase;
       task.progress = progress;
-      task.message = message;
+      task.message = message || undefined;
       
       this.emit('download-progress', {
         taskId,
