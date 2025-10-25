@@ -308,7 +308,7 @@ export class JobQueue extends EventEmitter {
           this.logger.info('任务已启动', { jobId: job.id, pid });
           
           // 等待任务完成
-          return new Promise<void>((innerResolve, innerReject) => {
+          return new Promise<void>((innerResolve) => {
             const checkCompletion = () => {
               if (job.status === 'completed' || job.status === 'failed' || job.status === 'canceled') {
                 this.activePid = null; // 清理PID
