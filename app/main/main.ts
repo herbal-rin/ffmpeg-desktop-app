@@ -2,6 +2,7 @@ import { app, BrowserWindow, Menu, shell } from 'electron';
 import { join } from 'path';
 import { setupIPC } from './ipc';
 import { setupToolsIPC, initializeToolsServices } from './ipc.tools';
+import { SettingsIPC } from './ipc.settings';
 import { PreviewService } from './previewService';
 import { FFprobeService } from '../services/ffmpeg/probe';
 import { ConsoleLogger } from '../services/logger';
@@ -177,13 +178,14 @@ app.whenReady().then(() => {
   // 设置 IPC
   setupIPC();
   
-  // 初始化工具服务
+  // 初始化服务
   try {
     const logger = new ConsoleLogger('debug');
     const ffmpegPaths = configService.getPaths();
     const ffprobeService = new FFprobeService(ffmpegPaths, logger);
     const previewService = new PreviewService(logger, ffmpegPaths);
     
+    // 初始化工具服务
     initializeToolsServices({
       previewService,
       ffprobeService,
@@ -194,9 +196,12 @@ app.whenReady().then(() => {
     // 设置工具 IPC
     setupToolsIPC();
     
-    logger.info('工具服务初始化成功');
+    // 初始化设置 IPC
+    new SettingsIPC(logger, configService);
+    
+    logger.info('所有服务初始化成功');
   } catch (error) {
-    console.error('工具服务初始化失败:', error);
+    console.error('服务初始化失败:', error);
   }
 
   // 创建主窗口

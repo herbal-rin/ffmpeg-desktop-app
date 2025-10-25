@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { CompressPage } from './pages/CompressPage';
 import { ToolsPage } from './pages/ToolsPage';
+import { SettingsPage } from './pages/SettingsPage';
 import { useSettingsStore } from './store/useSettingsStore';
 import { useJobsStore } from './store/useJobsStore';
 import { Toast } from './components/Toast';
@@ -11,7 +12,7 @@ import { Toast } from './components/Toast';
 export function App() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [currentPage, setCurrentPage] = useState<'compress' | 'tools'>('compress');
+  const [currentPage, setCurrentPage] = useState<'compress' | 'tools' | 'settings'>('compress');
   
   const { theme, language, loadSettings } = useSettingsStore();
   const { initializeQueue } = useJobsStore();
@@ -152,6 +153,16 @@ export function App() {
                 >
                   小工具
                 </button>
+                <button
+                  onClick={() => setCurrentPage('settings')}
+                  className={`inline-flex items-center px-1 pt-1 border-b-2 text-sm font-medium ${
+                    currentPage === 'settings'
+                      ? 'border-blue-500 text-gray-900 dark:text-white'
+                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
+                >
+                  设置
+                </button>
               </div>
             </div>
           </div>
@@ -162,6 +173,7 @@ export function App() {
       <main>
         {currentPage === 'compress' && <CompressPage />}
         {currentPage === 'tools' && <ToolsPage />}
+        {currentPage === 'settings' && <SettingsPage />}
       </main>
       
       <Toast />

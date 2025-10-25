@@ -21,7 +21,11 @@
     "electron": "electron .",
     "electron:dev": "npm run build && electron .",
     "demo": "npm run build && node dist/examples/p0-demo.js",
-    "demo:mock": "npm run build && node dist/examples/p0-demo.js --mock"
+    "demo:mock": "npm run build && node dist/examples/p0-demo.js --mock",
+    "build:win": "npm run build && electron-builder --win",
+    "build:mac": "npm run build && electron-builder --mac",
+    "build:linux": "npm run build && electron-builder --linux",
+    "build:all": "npm run build && electron-builder --win --mac --linux"
   },
   "keywords": ["ffmpeg", "video", "compression", "electron", "desktop", "react"],
   "author": "FFmpeg App Developer",
@@ -36,6 +40,7 @@
     "autoprefixer": "^10.4.0",
     "concurrently": "^8.2.0",
     "electron": "^30.0.0",
+    "electron-builder": "^24.6.4",
     "eslint": "^8.0.0",
     "eslint-plugin-react": "^7.33.0",
     "eslint-plugin-react-hooks": "^4.6.0",

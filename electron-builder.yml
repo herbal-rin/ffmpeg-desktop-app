@@ -1,0 +1,45 @@
+appId: com.ffmpeg.desktop
+productName: FFmpeg Desktop
+directories:
+  output: dist
+  buildResources: build
+files:
+  - "app/**"
+  - "dist/**"
+  - "!**/*.map"
+asar: true
+extraResources:
+  - from: appData/ffmpeg
+    to: resources/ffmpeg-managed
+    filter: ["**/*"]
+
+win:
+  target:
+    - nsis
+    - portable
+  artifactName: "${productName}-${version}-win-${arch}.${ext}"
+  nsis:
+    oneClick: false
+    perMachine: false
+    allowToChangeInstallationDirectory: true
+    createDesktopShortcut: true
+    createStartMenuShortcut: true
+    shortcutName: "FFmpeg Desktop"
+
+mac:
+  target: ["dmg"]
+  category: public.app-category.video
+  hardenedRuntime: true
+  entitlements: build/entitlements.mac.plist
+  artifactName: "${productName}-${version}-mac-${arch}.${ext}"
+  # 可选：universal: true
+
+linux:
+  target: ["AppImage", "deb"]
+  category: AudioVideo
+  artifactName: "${productName}-${version}-linux-${arch}.${ext}"
+  desktop:
+    Name: "FFmpeg Desktop"
+    Comment: "Video processing tool with FFmpeg"
+    Categories: "AudioVideo;Video;"
+    Keywords: "video;ffmpeg;converter;editor;"
