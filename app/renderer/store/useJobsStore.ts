@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { Job, Progress, QueueEventPayload, TranscodeOptions } from '@types/preload';
+import { Job, QueueEventPayload, TranscodeOptions } from '../../shared/types';
 
 /**
  * 任务状态接口
@@ -208,7 +208,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         }
         break;
         
-      case 'job-error':
+      case 'job-failed':
         if (job) {
           set((state) => ({
             jobs: state.jobs.map(j => 

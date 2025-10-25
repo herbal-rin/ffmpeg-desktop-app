@@ -54,7 +54,7 @@ describe('PreviewService', () => {
       const mockCancel = vi.spyOn(previewService, 'cancelPreview').mockResolvedValue(true);
       
       // 模拟第一次预览
-      const firstPreview = previewService.generateVideoPreview(
+      const firstPreviewPromise = previewService.generateVideoPreview(
         '/test/input.mp4',
         { startSec: 0, endSec: 10 },
         8,
@@ -62,12 +62,15 @@ describe('PreviewService', () => {
       );
 
       // 模拟第二次预览（应该取消第一次）
-      const secondPreview = previewService.generateVideoPreview(
+      const secondPreviewPromise = previewService.generateVideoPreview(
         '/test/input2.mp4',
         { startSec: 5, endSec: 15 },
         8,
         true
       );
+
+      // 等待两个Promise都完成（或失败）
+      await Promise.allSettled([firstPreviewPromise, secondPreviewPromise]);
 
       expect(mockCancel).toHaveBeenCalled();
     });
@@ -199,7 +202,12 @@ describe('PreviewService', () => {
         pid: 12345,
         killed: false,
         kill: vi.fn(),
-        on: vi.fn(),
+        on: vi.fn((event: string, callback: Function) => {
+          // 模拟进程立即完成
+          if (event === 'close') {
+            setTimeout(() => callback(0), 10);
+          }
+        }),
         stdout: { on: vi.fn() },
         stderr: { on: vi.fn() }
       }));
@@ -207,15 +215,18 @@ describe('PreviewService', () => {
       const { spawn } = await import('child_process');
       vi.mocked(spawn).mockImplementation(mockSpawn);
 
-      previewService.generateVideoPreview(
+      const previewPromise = previewService.generateVideoPreview(
         '/test/input.mp4',
         { startSec: 0, endSec: 10 },
         8,
         true
       );
 
-      // 注意：这里无法直接测试 isPreviewing() 因为 spawn 是异步的
-      // 在实际测试中，我们需要等待进程启动
-    });
+      // 等待Promise完成（或失败）
+      await Promise.allSettled([previewPromise]);
+
+      // 验证spawn被调用
+      expect(mockSpawn).toHaveBeenCalled();
+    }, 5000);
   });
 });

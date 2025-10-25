@@ -15,7 +15,7 @@ async function runDemo() {
   console.log('=====================================\n');
 
   // 创建日志实例
-  const logger = new ConsoleLogger('info');
+  const _logger = new ConsoleLogger('info');
 
   // 检查 FFmpeg 路径（这里使用模拟路径，实际使用时需要配置真实路径）
   const ffmpegPaths: FfmpegPaths = {
@@ -25,7 +25,7 @@ async function runDemo() {
 
   try {
     // 验证 FFmpeg 是否可用
-    await validateFFmpeg(ffmpegPaths, logger);
+    await validateFFmpeg(ffmpegPaths, _logger);
   } catch (error) {
     console.error('❌ FFmpeg 验证失败:', error instanceof Error ? error.message : String(error));
     console.log('\n请确保：');
@@ -36,11 +36,11 @@ async function runDemo() {
   }
 
   // 创建服务实例
-  const ffmpegService = new FfmpegService(ffmpegPaths, logger);
-  const jobQueue = new JobQueue(ffmpegService, logger);
+  const ffmpegService = new FfmpegService(ffmpegPaths, _logger);
+  const jobQueue = new JobQueue(ffmpegService, _logger);
 
   // 设置事件监听
-  setupEventListeners(jobQueue, logger);
+  setupEventListeners(jobQueue, _logger);
 
   // 创建示例任务
   const demoJobs = createDemoJobs();
@@ -95,7 +95,7 @@ async function validateFFmpeg(paths: FfmpegPaths, logger: ConsoleLogger): Promis
 /**
  * 设置事件监听器
  */
-function setupEventListeners(jobQueue: JobQueue, logger: ConsoleLogger): void {
+function setupEventListeners(jobQueue: JobQueue, _logger: ConsoleLogger): void {
   jobQueue.on('job-start', ({ job }) => {
     console.log(`▶️  任务开始: ${job.id}`);
     console.log(`   输入: ${path.basename(job.opts.input)}`);
@@ -229,11 +229,11 @@ async function runMockDemo(): Promise<void> {
   console.log('🎭 FFmpeg 视频压缩应用 - 模拟演示');
   console.log('=====================================\n');
 
-  const logger = new ConsoleLogger('info');
+  const _logger = new ConsoleLogger('info');
 
   // 创建模拟的 FFmpeg 服务
   const mockFfmpegService = {
-    async transcode(job: any, onProgress: (progress: any) => void): Promise<void> {
+    async transcode(_job: any, onProgress: (progress: any) => void): Promise<void> {
       return new Promise((resolve) => {
         let progress = 0;
         const interval = setInterval(() => {
@@ -259,10 +259,10 @@ async function runMockDemo(): Promise<void> {
     cancel: () => {}
   };
 
-  const jobQueue = new JobQueue(mockFfmpegService as any, logger);
+  const jobQueue = new JobQueue(mockFfmpegService as any, _logger);
 
   // 设置事件监听
-  setupEventListeners(jobQueue, logger);
+  setupEventListeners(jobQueue, _logger);
 
   // 创建模拟任务
   const mockJobs: TranscodeOptions[] = [

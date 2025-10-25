@@ -19,6 +19,15 @@ export function App() {
 
   useEffect(() => {
     initializeApp();
+    
+    // 组件卸载时清理
+    return () => {
+      const cleanup = (window as any).__appCleanup;
+      if (cleanup) {
+        cleanup();
+        delete (window as any).__appCleanup;
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -52,12 +61,15 @@ export function App() {
         handleAppEvent(event);
       });
 
-      // 清理函数
+      // 存储清理函数供组件卸载时使用
       const cleanup = () => {
         unsubscribeMenu();
         unsubscribeApp();
       };
-      return cleanup;
+      
+      // 将清理函数存储到组件实例上
+      (window as any).__appCleanup = cleanup;
+      
     } catch (err) {
       console.error('应用初始化失败:', err);
       setError(err instanceof Error ? err.message : '未知错误');

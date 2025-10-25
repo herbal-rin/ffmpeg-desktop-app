@@ -143,7 +143,7 @@ export class FFprobeService {
   async isValidVideo(input: string): Promise<boolean> {
     try {
       const result = await this.probe(input);
-      return result.durationSec > 0 && result.streams?.some((s: any) => s.type === 'video');
+      return result.durationSec > 0 && Boolean(result.streams?.some((s: any) => s.type === 'video'));
     } catch {
       return false;
     }

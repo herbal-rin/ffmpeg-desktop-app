@@ -1,7 +1,6 @@
-import React from 'react';
 import { useJobsStore } from '../store/useJobsStore';
 import { t, formatProgress, formatSpeed, formatETA, getJobStatusText, getContainerDisplayName } from '../i18n';
-import { JobStatus } from '@types/preload';
+import { JobStatus } from '../../shared/types';
 
 /**
  * 任务队列表格组件
@@ -129,9 +128,8 @@ export function JobQueueTable() {
             <button
               onClick={() => {
                 const completedJob = jobs.find(j => j.status === 'completed');
-                if (completedJob?.output) {
-                  const path = require('path');
-                  window.api.invoke('system/openDirectory', path.dirname(completedJob.output));
+                if (completedJob?.opts?.outputDir) {
+                  window.api.invoke('system/openDirectory', completedJob.opts.outputDir);
                 }
               }}
               disabled={!jobs.some(j => j.status === 'completed')}

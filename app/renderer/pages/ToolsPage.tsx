@@ -17,9 +17,6 @@ export const ToolsPage: React.FC = () => {
   const {
     selectedFile,
     timeRange,
-    previewPath,
-    isPreviewing,
-    previewProgress,
     trimMode,
     trimContainer,
     trimVideoCodec,
@@ -44,6 +41,15 @@ export const ToolsPage: React.FC = () => {
     type: 'success' | 'error' | 'info';
     details?: string;
   }>({ show: false, message: '', type: 'info' });
+
+  // 显示提示
+  const showToast = (message: string, type: 'info' | 'error' | 'success' | 'warning') => {
+    setToast({
+      show: true,
+      message,
+      type: type as 'success' | 'error' | 'info'
+    });
+  };
 
   // 监听工具事件
   useEffect(() => {
@@ -107,6 +113,11 @@ export const ToolsPage: React.FC = () => {
     if (files.length === 0) return;
 
     const file = files[0];
+    if (!file) {
+      showToast('请选择文件', 'error');
+      return;
+    }
+    
     try {
       // 保存文件到临时目录
       const arrayBuffer = await file.arrayBuffer();
@@ -119,7 +130,7 @@ export const ToolsPage: React.FC = () => {
       const probeResult = await window.api.invoke('ffmpeg/probe', { input: tempPath });
 
       const fileInfo = {
-        file,
+        file: file!,
         tempPath,
         probeResult
       };
@@ -160,7 +171,7 @@ export const ToolsPage: React.FC = () => {
   };
 
   // 生成预览（防抖版本）
-  const handlePreviewDebounced = useDebouncedCallback(async (type: 'trim' | 'gif') => {
+  const _handlePreviewDebounced = useDebouncedCallback(async (type: 'trim' | 'gif') => {
     if (!selectedFile) return;
 
     try {
@@ -190,8 +201,8 @@ export const ToolsPage: React.FC = () => {
     }
   }, 400); // 400ms 防抖
 
-  // 生成预览（立即执行版本，用于手动点击）
-  const handlePreview = async (type: 'trim' | 'gif') => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _handlePreview = async (type: 'trim' | 'gif') => {
     if (!selectedFile) return;
 
     try {
@@ -382,7 +393,7 @@ export const ToolsPage: React.FC = () => {
         {/* 预览操作栏 */}
         <div className="mb-6">
           <PreviewBar
-            onPreview={handlePreviewDebounced}
+            onPreview={_handlePreviewDebounced}
             onExport={handleExport}
             onCancel={handleCancel}
           />

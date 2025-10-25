@@ -175,9 +175,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           <div
             className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer transform -translate-y-1/2 top-1/2 hover:bg-blue-700"
             style={{ left: `${(timeRange.startSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
-            onMouseDown={(e) => {
+              onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
-                const rect = e.currentTarget?.parentElement?.getBoundingClientRect();
+                const rect = (e.currentTarget as HTMLElement)?.parentElement?.getBoundingClientRect();
                 if (rect) {
                   const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                   const newTime = percentage * duration;
@@ -199,9 +199,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           <div
             className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer transform -translate-y-1/2 top-1/2 hover:bg-blue-700"
             style={{ left: `${(timeRange.endSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
-            onMouseDown={(e) => {
+              onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
-                const rect = e.currentTarget?.parentElement?.getBoundingClientRect();
+                const rect = (e.currentTarget as HTMLElement)?.parentElement?.getBoundingClientRect();
                 if (rect) {
                   const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                   const newTime = percentage * duration;

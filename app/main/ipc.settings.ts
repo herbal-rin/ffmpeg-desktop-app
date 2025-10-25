@@ -5,20 +5,10 @@
 import { ipcMain, dialog } from 'electron';
 import * as fs from 'fs';
 import * as path from 'path';
-import { Logger } from '../shared/types';
+import { Logger, SettingsData } from '../shared/types';
 import { FFmpegManager, DownloadProgress } from './ffmpegManager';
 import { GPUDetector } from './gpuDetect';
 import { ConfigService } from '../services/config';
-
-export interface SettingsData {
-  defaultOutputDir: string;
-  language: 'zh' | 'en';
-  theme: 'light' | 'dark' | 'system';
-  preferHardwareAccel: boolean;
-  ffmpegPath: string;
-  ffprobePath: string;
-  ffmpegManaged: boolean;
-}
 
 export interface DownloadRequest {
   provider: 'official' | 'mirrorA' | 'mirrorB';
@@ -263,15 +253,18 @@ export class SettingsIPC {
     const defaultOutputDir = this.configService.getDefaultOutputDir();
     const ffmpegPath = this.configService.getFfmpegPath();
     const ffprobePath = this.configService.getFfprobePath();
+    const language = this.configService.getLanguage();
+    const theme = this.configService.getTheme();
+    const preferHardwareAccel = this.configService.getHardwareAcceleration();
     
     return {
       defaultOutputDir,
-      language: 'zh', // 从配置中获取
-      theme: 'system', // 从配置中获取
-      preferHardwareAccel: true, // 从配置中获取
+      language: language === 'zh-CN' ? 'zh' : 'en', // 转换格式
+      theme: theme === 'light' ? 'light' : theme === 'dark' ? 'dark' : 'system', // 转换格式
+      preferHardwareAccel,
       ffmpegPath,
       ffprobePath,
-      ffmpegManaged: false // 从配置中获取
+      ffmpegManaged: false // TODO: 从配置中获取
     };
   }
 
@@ -284,7 +277,7 @@ export class SettingsIPC {
         if (!this.isDirectoryWritable(settings.defaultOutputDir)) {
           throw new Error('输出目录不可写');
         }
-        // 更新配置
+        this.configService.setDefaultOutputDir(settings.defaultOutputDir);
       }
       
       if (settings.ffmpegPath !== undefined) {
@@ -303,10 +296,20 @@ export class SettingsIPC {
         this.configService.setFfprobePath(settings.ffprobePath);
       }
       
-      // 处理语言和主题变更
-      if (settings.language !== undefined || settings.theme !== undefined) {
-        // 发送事件通知渲染进程
-        // 这里需要通过webContents发送事件
+      if (settings.language !== undefined) {
+        // 转换格式：'zh' -> 'zh-CN', 'en' -> 'en'
+        const configLanguage = settings.language === 'zh' ? 'zh-CN' : 'en';
+        this.configService.setLanguage(configLanguage);
+      }
+      
+      if (settings.theme !== undefined) {
+        // 转换格式：'system' -> 'light' (默认)
+        const configTheme = settings.theme === 'system' ? 'light' : settings.theme;
+        this.configService.setTheme(configTheme);
+      }
+      
+      if (settings.preferHardwareAccel !== undefined) {
+        this.configService.setHardwareAcceleration(settings.preferHardwareAccel);
       }
       
       return { ok: true };

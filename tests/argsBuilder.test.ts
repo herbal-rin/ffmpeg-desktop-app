@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 import { ArgsBuilder } from '../app/services/ffmpeg/argsBuilder';
-import { VideoCodec, Container, AudioPolicy, PresetName } from '../app/shared/types';
+import { VideoCodec, Container, AudioPolicy } from '../app/shared/types';
 
 describe('ArgsBuilder', () => {
   describe('buildVideoArgs', () => {

@@ -1,6 +1,5 @@
-import React from 'react';
 import { t, getCodecDisplayName } from '../i18n';
-import { VideoCodec } from '@types/preload';
+import { VideoCodec } from '../../shared/types';
 
 /**
  * 编码器选择组件属性

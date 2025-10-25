@@ -378,7 +378,9 @@ export class FFmpegManager extends EventEmitter {
     if (task) {
       task.status = phase;
       task.progress = progress;
-      task.message = message || undefined;
+      if (message !== undefined) {
+        task.message = message;
+      }
       
       this.emit('download-progress', {
         taskId,

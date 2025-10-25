@@ -1,6 +1,5 @@
-import React from 'react';
 import { t, getAudioCodecDisplayName } from '../i18n';
-import { AudioPolicy } from '@types/preload';
+import { AudioPolicy } from '../../shared/types';
 
 /**
  * 音频选项组件属性

@@ -279,63 +279,7 @@ export function setupIPC(): void {
     }
   });
 
-  // 设置相关 IPC
-  
-  /**
-   * 获取设置
-   */
-  ipcMain.handle('settings/get', async (_event, {}) => {
-    try {
-      return {
-        ffmpegPath: configService.getFfmpegPath(),
-        ffprobePath: configService.getFfprobePath(),
-        defaultOutputDir: configService.getDefaultOutputDir(),
-        language: configService.getLanguage(),
-        theme: configService.getTheme(),
-        hardwareAcceleration: configService.getHardwareAcceleration()
-      };
-    } catch (error) {
-      logger?.error('获取设置失败', { 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      throw error;
-    }
-  });
-
-  /**
-   * 设置设置
-   */
-  ipcMain.handle('settings/set', async (_event, settings: any) => {
-    try {
-      if (settings.ffmpegPath !== undefined) {
-        configService.setFfmpegPath(settings.ffmpegPath);
-      }
-      if (settings.ffprobePath !== undefined) {
-        configService.setFfprobePath(settings.ffprobePath);
-      }
-      if (settings.defaultOutputDir !== undefined) {
-        configService.setDefaultOutputDir(settings.defaultOutputDir);
-      }
-      if (settings.language !== undefined) {
-        configService.setLanguage(settings.language);
-      }
-      if (settings.theme !== undefined) {
-        configService.setTheme(settings.theme);
-      }
-      if (settings.hardwareAcceleration !== undefined) {
-        configService.setHardwareAcceleration(settings.hardwareAcceleration);
-      }
-      
-      logger?.info('设置已更新', settings);
-      
-      return { ok: true };
-    } catch (error) {
-      logger?.error('更新设置失败', { 
-        error: error instanceof Error ? error.message : String(error) 
-      });
-      throw error;
-    }
-  });
+  // 注意：设置相关IPC已移至SettingsIPC类处理
 
   // GPU 检测相关 IPC
   

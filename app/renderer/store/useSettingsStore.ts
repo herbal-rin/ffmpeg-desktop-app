@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { SettingsResponse, SettingsRequest } from '@types/preload';
+import { SettingsResponse, SettingsRequest } from '../../shared/types';
 
 /**
  * 设置状态接口
@@ -9,9 +9,10 @@ interface SettingsState {
   ffmpegPath: string;
   ffprobePath: string;
   defaultOutputDir: string;
-  language: string;
-  theme: 'light' | 'dark';
-  hardwareAcceleration: boolean;
+  language: 'zh' | 'en';
+  theme: 'light' | 'dark' | 'system';
+  preferHardwareAccel: boolean;
+  ffmpegManaged: boolean;
   
   // 状态
   isLoading: boolean;
@@ -20,10 +21,10 @@ interface SettingsState {
   // 操作
   loadSettings: () => Promise<void>;
   updateSettings: (settings: Partial<SettingsRequest>) => Promise<void>;
-  setTheme: (theme: 'light' | 'dark') => void;
-  setLanguage: (language: string) => void;
+  setTheme: (theme: 'light' | 'dark' | 'system') => void;
+  setLanguage: (language: 'zh' | 'en') => void;
   setDefaultOutputDir: (dir: string) => void;
-  setHardwareAcceleration: (enabled: boolean) => void;
+  setPreferHardwareAccel: (enabled: boolean) => void;
   clearError: () => void;
 }
 
@@ -35,9 +36,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   ffmpegPath: '',
   ffprobePath: '',
   defaultOutputDir: '',
-  language: 'zh-CN',
-  theme: 'light',
-  hardwareAcceleration: true,
+  language: 'zh',
+  theme: 'system',
+  preferHardwareAccel: true,
+  ffmpegManaged: false,
   isLoading: false,
   error: null,
 
@@ -53,8 +55,9 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
         ffprobePath: settings.ffprobePath,
         defaultOutputDir: settings.defaultOutputDir,
         language: settings.language,
-        theme: settings.theme as 'light' | 'dark',
-        hardwareAcceleration: settings.hardwareAcceleration,
+        theme: settings.theme,
+        preferHardwareAccel: settings.preferHardwareAccel,
+        ffmpegManaged: settings.ffmpegManaged,
         isLoading: false,
       });
     } catch (error) {
@@ -89,13 +92,13 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
   },
 
   // 设置主题
-  setTheme: (theme: 'light' | 'dark') => {
+  setTheme: (theme: 'light' | 'dark' | 'system') => {
     set({ theme });
     get().updateSettings({ theme });
   },
 
   // 设置语言
-  setLanguage: (language: string) => {
+  setLanguage: (language: 'zh' | 'en') => {
     set({ language });
     get().updateSettings({ language });
   },
@@ -106,10 +109,10 @@ export const useSettingsStore = create<SettingsState>((set, get) => ({
     get().updateSettings({ defaultOutputDir });
   },
 
-  // 设置硬件加速
-  setHardwareAcceleration: (hardwareAcceleration: boolean) => {
-    set({ hardwareAcceleration });
-    get().updateSettings({ hardwareAcceleration });
+  // 设置硬件加速偏好
+  setPreferHardwareAccel: (preferHardwareAccel: boolean) => {
+    set({ preferHardwareAccel });
+    get().updateSettings({ preferHardwareAccel });
   },
 
   // 清除错误

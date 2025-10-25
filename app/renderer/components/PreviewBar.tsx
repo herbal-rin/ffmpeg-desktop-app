@@ -20,7 +20,6 @@ export const PreviewBar: React.FC<PreviewBarProps> = ({
 }) => {
   const { 
     selectedFile, 
-    timeRange, 
     isPreviewing, 
     previewProgress,
     trimMode,

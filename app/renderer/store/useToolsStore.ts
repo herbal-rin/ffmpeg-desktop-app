@@ -87,7 +87,7 @@ const initialState = {
 };
 
 export const useToolsStore = create<ToolsState>()(
-  subscribeWithSelector((set, get) => ({
+  subscribeWithSelector((set, _get) => ({
     ...initialState,
     
     setSelectedFile: (file) => set({ selectedFile: file }),

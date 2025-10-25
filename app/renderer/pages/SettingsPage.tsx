@@ -8,16 +8,7 @@ import { LanguageThemeCard } from '../components/LanguageThemeCard';
 import { HardwareDiagCard } from '../components/HardwareDiagCard';
 import { FfmpegManagerCard } from '../components/FfmpegManagerCard';
 import { Toast } from '../components/Toast';
-
-interface SettingsData {
-  defaultOutputDir: string;
-  language: 'zh' | 'en';
-  theme: 'light' | 'dark' | 'system';
-  preferHardwareAccel: boolean;
-  ffmpegPath: string;
-  ffprobePath: string;
-  ffmpegManaged: boolean;
-}
+import { SettingsData } from '../../shared/types';
 
 interface ToastState {
   visible: boolean;
@@ -81,7 +72,7 @@ export const SettingsPage: React.FC = () => {
       visible: true,
       message,
       type,
-      details
+      ...(details && { details })
     });
   };
 
@@ -205,7 +196,6 @@ export const SettingsPage: React.FC = () => {
 
       {/* 提示组件 */}
       <Toast
-        visible={toast.visible}
         message={toast.message}
         type={toast.type}
         details={toast.details}

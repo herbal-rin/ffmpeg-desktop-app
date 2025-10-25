@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
+import { useState } from 'react';
 import { t, getPresetDisplayName, getPresetDescription } from '../i18n';
-import { VideoCodec } from '@types/preload';
+import { VideoCodec } from '../../shared/types';
 
 /**
  * 预设预估信息
@@ -14,7 +14,7 @@ interface PresetEstimate {
 /**
  * 获取预设预估信息
  */
-function getPresetEstimate(presetName: string, codec: VideoCodec | 'auto'): PresetEstimate {
+function getPresetEstimate(presetName: string, _codec: VideoCodec | 'auto'): PresetEstimate {
   const estimates: Record<string, PresetEstimate> = {
     'hq_slow': {
       encodingTime: '2-4x',
@@ -41,19 +41,31 @@ function getPresetEstimate(presetName: string, codec: VideoCodec | 'auto'): Pres
 }
 
 /**
+ * 自定义预设配置
+ */
+interface CustomPresetConfig {
+  crf: number;
+  preset: string;
+  maxrate: string;
+  bufsize: string;
+  bframes: number;
+  lookahead: number;
+  bitrateK?: number;
+}
+
+/**
  * 预设选择组件属性
  */
 interface PresetPickerProps {
   value: string;
   onChange: (preset: string, customConfig?: CustomPresetConfig) => void;
-  codec: VideoCodec | 'auto';
   disabled?: boolean;
 }
 
 /**
  * 预设选择组件
  */
-export function PresetPicker({ value, onChange, codec, disabled = false }: PresetPickerProps) {
+export function PresetPicker({ value, onChange, disabled = false }: PresetPickerProps) {
   const [customConfig, setCustomConfig] = useState<CustomPresetConfig>({
     crf: 22,
     preset: 'medium',
@@ -89,8 +101,8 @@ export function PresetPicker({ value, onChange, codec, disabled = false }: Prese
     onChange('custom', newConfig);
   };
 
-  // 获取预设参数
-  const getPresetArgs = (preset: string, codec: VideoCodec | 'auto'): string[] => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const _getPresetArgs = (preset: string, codec: VideoCodec | 'auto'): string[] => {
     if (preset === 'custom') {
       const args: string[] = [];
       
@@ -177,7 +189,7 @@ export function PresetPicker({ value, onChange, codec, disabled = false }: Prese
         
         <div className="grid grid-cols-2 gap-2">
           {presetOptions.map((preset) => {
-            const estimate = getPresetEstimate(preset.value, codec);
+            const estimate = getPresetEstimate(preset.value, 'auto');
             return (
               <button
                 key={preset.value}

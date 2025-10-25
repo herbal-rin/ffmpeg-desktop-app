@@ -143,9 +143,9 @@ describe('Time Utils', () => {
       // 解析大小值进行比较（考虑单位）
       const parseSize = (sizeStr: string): number => {
         const match = sizeStr.match(/^(\d+(?:\.\d+)?)\s*(KB|MB)$/);
-        if (!match) return 0;
+        if (!match || !match[1]) return 0;
         const value = parseFloat(match[1]);
-        const unit = match[2];
+        const unit = match[2]!;
         return unit === 'MB' ? value * 1024 : value;
       };
       

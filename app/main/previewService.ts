@@ -44,6 +44,11 @@ export class PreviewService extends EventEmitter {
   private cleanupOldPreviews(): void {
     try {
       const files = fs.readdirSync(this.tempDir);
+      if (!Array.isArray(files)) {
+        this.logger.warn('清理预览文件失败', { error: 'files is not iterable' });
+        return;
+      }
+      
       const now = Date.now();
       const maxAge = 24 * 60 * 60 * 1000; // 24 小时
 
@@ -392,6 +397,11 @@ export class PreviewService extends EventEmitter {
   cleanupAllPreviews(): void {
     try {
       const files = fs.readdirSync(this.tempDir);
+      if (!Array.isArray(files)) {
+        this.logger.warn('清理所有预览文件失败', { error: 'files is not iterable' });
+        return;
+      }
+      
       for (const file of files) {
         const filePath = path.join(this.tempDir, file);
         fs.unlinkSync(filePath);

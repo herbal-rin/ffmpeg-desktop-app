@@ -94,7 +94,7 @@ export class ProgressParser {
       timeMs,
       speed,
       bitrate: partial.bitrate || '',
-      etaSec
+      ...(etaSec !== undefined && { etaSec })
     };
   }
 
@@ -106,7 +106,7 @@ export class ProgressParser {
     
     // 解析 out_time_ms=123456
     const timeMatch = line.match(/out_time_ms=(\d+)/);
-    if (timeMatch) {
+    if (timeMatch && timeMatch[1]) {
       result.timeMs = parseInt(timeMatch[1]);
     }
     

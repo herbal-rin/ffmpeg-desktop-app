@@ -134,3 +134,52 @@ export interface Logger {
   error(message: string, meta?: Record<string, unknown>): void;
   child(meta: Record<string, unknown>): Logger;
 }
+
+/**
+ * 队列事件载荷
+ */
+export interface QueueEventPayload {
+  type: 'job-start' | 'job-progress' | 'job-done' | 'job-failed' | 'job-canceled' | 'queue-empty';
+  job?: Job;
+  error?: string;
+  progress?: Progress;
+}
+
+/**
+ * 设置数据
+ */
+export interface SettingsData {
+  defaultOutputDir: string;
+  language: 'zh' | 'en';
+  theme: 'light' | 'dark' | 'system';
+  preferHardwareAccel: boolean;
+  ffmpegPath: string;
+  ffprobePath: string;
+  ffmpegManaged: boolean;
+}
+
+/**
+ * 设置请求
+ */
+export interface SettingsRequest {
+  defaultOutputDir?: string;
+  language?: 'zh' | 'en';
+  theme?: 'light' | 'dark' | 'system';
+  preferHardwareAccel?: boolean;
+  ffmpegPath?: string;
+  ffprobePath?: string;
+  ffmpegManaged?: boolean;
+}
+
+/**
+ * 设置响应
+ */
+export interface SettingsResponse {
+  defaultOutputDir: string;
+  language: 'zh' | 'en';
+  theme: 'light' | 'dark' | 'system';
+  preferHardwareAccel: boolean;
+  ffmpegPath: string;
+  ffprobePath: string;
+  ffmpegManaged: boolean;
+}

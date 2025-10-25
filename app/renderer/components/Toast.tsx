@@ -1,5 +1,4 @@
 import React from 'react';
-import { t } from '../i18n';
 
 /**
  * Toast 组件属性
@@ -27,7 +26,7 @@ interface ToastState {
 /**
  * Toast 组件
  */
-export function Toast({ message, type = 'info', duration = 3000, onClose, details, show = false }: ToastProps) {
+export function Toast({ message, type = 'info', duration = 3000, onClose, details }: ToastProps) {
   const [state, setState] = React.useState<ToastState>({
     visible: false,
     message: '',

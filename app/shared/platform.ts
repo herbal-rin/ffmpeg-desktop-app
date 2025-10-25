@@ -40,6 +40,18 @@ export function getPlatformInfo(): PlatformInfo {
 }
 
 /**
+ * 获取FFmpeg可执行文件名
+ */
+export function getFFmpegExecutableName(platformInfo: PlatformInfo): { ffmpeg: string; ffprobe: string } {
+  const { platform } = platformInfo;
+  
+  return {
+    ffmpeg: platform === 'win32' ? 'ffmpeg.exe' : 'ffmpeg',
+    ffprobe: platform === 'win32' ? 'ffprobe.exe' : 'ffprobe'
+  };
+}
+
+/**
  * 获取FFmpeg下载文件名
  */
 export function getFFmpegDownloadFilename(version: string, platformInfo: PlatformInfo): string {
@@ -74,25 +86,6 @@ export function getFFmpegDownloadUrl(version: string, platformInfo: PlatformInfo
       return `https://github.com/BtbN/FFmpeg-Builds/releases/download/autobuild-${version}/${filename}`;
     default:
       throw new Error(`Unsupported provider: ${provider}`);
-  }
-}
-
-/**
- * 获取FFmpeg可执行文件名
- */
-export function getFFmpegExecutableName(platformInfo: PlatformInfo): { ffmpeg: string; ffprobe: string } {
-  const { platformName } = platformInfo;
-  
-  if (platformName === 'win') {
-    return {
-      ffmpeg: 'ffmpeg.exe',
-      ffprobe: 'ffprobe.exe'
-    };
-  } else {
-    return {
-      ffmpeg: 'ffmpeg',
-      ffprobe: 'ffprobe'
-    };
   }
 }
 

@@ -1,6 +1,5 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { JobQueue } from '../app/services/queue/jobQueue';
-import { FfmpegService } from '../app/services/ffmpeg/ffmpegService';
 import { ConsoleLogger } from '../app/services/logger';
 import { TranscodeOptions, Job } from '../app/shared/types';
 
@@ -9,7 +8,7 @@ class MockFfmpegService {
   private activeProcesses: number[] = [];
   private mockProcess: any = null;
 
-  async transcode(job: Job, onProgress: (progress: any) => void): Promise<void> {
+  async transcode(_job: Job, onProgress: (progress: any) => void): Promise<void> {
     return new Promise((resolve, reject) => {
       // 模拟长时间运行的任务
       this.mockProcess = {
@@ -54,15 +53,15 @@ class MockFfmpegService {
     return [...this.activeProcesses];
   }
 
-  pause(pid: number): void {
+  pause(_pid: number): void {
     // Mock implementation
   }
 
-  resume(pid: number): void {
+  resume(_pid: number): void {
     // Mock implementation
   }
 
-  cancel(pid: number): void {
+  cancel(_pid: number): void {
     if (this.mockProcess) {
       this.mockProcess.kill('SIGTERM');
     }
@@ -95,6 +94,7 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
 
       expect(job.id).toBeDefined();
@@ -116,8 +116,9 @@ describe('JobQueue', () => {
       const events: any[] = [];
       jobQueue.on('job-start', (data) => events.push({ type: 'job-start', data }));
       jobQueue.on('job-progress', (data) => events.push({ type: 'job-progress', data }));
-      jobQueue.on('job-done', (data) => events.push({ type: 'job-done', data }));
+      jobQueue.on('job-done', (_data) => events.push({ type: 'job-done', data: _data }));
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
 
       // 等待任务完成
@@ -140,6 +141,7 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       expect(jobQueue.getStatus().queueLength).toBe(0); // 任务立即开始执行
 
@@ -161,6 +163,7 @@ describe('JobQueue', () => {
       const events: any[] = [];
       jobQueue.on('job-canceled', (data) => events.push({ type: 'job-canceled', data }));
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       
       // 等待任务开始
@@ -184,6 +187,7 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       
       // 等待任务开始
@@ -211,6 +215,7 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       const status = jobQueue.getStatus();
 
@@ -260,7 +265,7 @@ describe('JobQueue', () => {
   describe('queue-empty event', () => {
     it('应该在队列为空时触发事件', async () => {
       const events: any[] = [];
-      jobQueue.on('queue-empty', (data) => events.push({ type: 'queue-empty', data }));
+      jobQueue.on('queue-empty', (_data) => events.push({ type: 'queue-empty', data: _data }));
 
       const opts: TranscodeOptions = {
         input: '/path/to/input.mp4',

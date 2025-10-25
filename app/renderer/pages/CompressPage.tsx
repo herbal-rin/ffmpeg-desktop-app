@@ -7,7 +7,7 @@ import { JobQueueTable } from '../components/JobQueueTable';
 import { useJobsStore } from '../store/useJobsStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { t, formatFileSize, formatDuration } from '../i18n';
-import { TranscodeOptions, AudioPolicy, Container, VideoCodec, ProbeResult } from '@types/preload';
+import { TranscodeOptions, AudioPolicy, Container, VideoCodec, ProbeResult } from '../../shared/types';
 
 /**
  * 文件信息接口
@@ -33,13 +33,11 @@ export function CompressPage() {
   const [subtitleFile, setSubtitleFile] = useState<string>('');
   
   const { 
-    jobs, 
     isProcessing, 
     gpuInfo, 
     addJob, 
     startQueue, 
-    detectGPU,
-    error: jobsError 
+    detectGPU
   } = useJobsStore();
   
   const { 
@@ -100,7 +98,7 @@ export function CompressPage() {
     const fileToRemove = files[index];
     
     // 清理临时文件
-    if (fileToRemove.tempPath) {
+    if (fileToRemove?.tempPath) {
       try {
         await window.api.invoke('file/cleanup-temp', {
           tempPath: fileToRemove.tempPath
@@ -319,8 +317,7 @@ export function CompressPage() {
                   <div className="mt-4">
                     <PresetPicker
                       value={preset}
-                      onChange={(preset, customConfig) => setPreset(preset)}
-                      codec={videoCodec === 'auto' ? 'libx264' : videoCodec}
+                      onChange={(preset) => setPreset(preset)}
                       disabled={isProcessing}
                     />
                   </div>
