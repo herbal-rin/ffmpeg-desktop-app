@@ -394,7 +394,7 @@ export function setupIPC(): void {
                 .split('\n')
                 .filter(line => line.includes('_nvenc') || line.includes('_qsv') || line.includes('_videotoolbox'))
                 .map(line => line.trim().split(/\s+/)[1])
-                .filter(Boolean);
+                .filter((encoder): encoder is string => Boolean(encoder));
               resolve(encoders);
             } else {
               reject(new Error(`FFmpeg 退出码: ${code}`));

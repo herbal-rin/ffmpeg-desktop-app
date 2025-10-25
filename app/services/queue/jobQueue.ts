@@ -302,6 +302,24 @@ export class JobQueue extends EventEmitter {
 
       // 执行转码
       this.ffmpegService.transcode(job, onProgress)
+        .then((pid) => {
+          // 保存进程PID
+          this.activePid = pid;
+          this.logger.info('任务已启动', { jobId: job.id, pid });
+          
+          // 等待任务完成
+          return new Promise<void>((innerResolve, innerReject) => {
+            const checkCompletion = () => {
+              if (job.status === 'completed' || job.status === 'failed' || job.status === 'canceled') {
+                this.activePid = null; // 清理PID
+                innerResolve();
+              } else {
+                setTimeout(checkCompletion, 100); // 每100ms检查一次
+              }
+            };
+            checkCompletion();
+          });
+        })
         .then(() => {
           job.status = 'completed';
           job.finishedAt = Date.now();
@@ -313,6 +331,7 @@ export class JobQueue extends EventEmitter {
           resolve();
         })
         .catch((error) => {
+          this.activePid = null; // 清理PID
           reject(error);
         });
     });

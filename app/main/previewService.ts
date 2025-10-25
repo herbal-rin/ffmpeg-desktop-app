@@ -125,12 +125,18 @@ export class PreviewService extends EventEmitter {
     return new Promise((resolve, reject) => {
       this.logger.info('开始生成视频预览', { input, range, duration, args });
       
-      this.currentProcess = spawn(this.ffmpegPaths.ffmpeg, args, {
-        stdio: ['ignore', 'pipe', 'pipe'],
-        shell: false,
-        windowsHide: true,
-        detached: false
-      });
+      try {
+        this.currentProcess = spawn(this.ffmpegPaths.ffmpeg, args, {
+          stdio: ['ignore', 'pipe', 'pipe'],
+          shell: false,
+          windowsHide: true,
+          detached: false
+        });
+
+        // 检查spawn是否成功
+        if (!this.currentProcess) {
+          throw new Error('FFmpeg 进程启动失败');
+        }
 
       let progressBuffer = Buffer.alloc(0);
 
@@ -195,6 +201,18 @@ export class PreviewService extends EventEmitter {
       });
 
       this.emit('preview-start', { tempPath });
+
+      } catch (error) {
+        // spawn失败时的处理
+        this.currentProcess = null;
+        this.cleanupTempFile(tempPath);
+        this.logger.error('预览进程启动失败', { 
+          error: error instanceof Error ? error.message : String(error),
+          tempPath 
+        });
+        this.emit('preview-error', { error: error instanceof Error ? error.message : String(error) });
+        reject(error);
+      }
     });
   }
 

@@ -35,7 +35,7 @@ export class ProgressParser {
             result.speed = 0; // 无效速度设为 0
           } else {
             const speedMatch = value.match(/^(\d+\.?\d*)x$/);
-            if (speedMatch) {
+            if (speedMatch && speedMatch[1]) {
               const speed = parseFloat(speedMatch[1]);
               if (!isNaN(speed) && speed >= 0) {
                 result.speed = speed;
@@ -93,7 +93,7 @@ export class ProgressParser {
       ratio,
       timeMs,
       speed,
-      bitrate: partial.bitrate,
+      bitrate: partial.bitrate || undefined,
       etaSec
     };
   }
@@ -112,13 +112,13 @@ export class ProgressParser {
     
     // 解析 speed=1.2x
     const speedMatch = line.match(/speed=(\d+\.?\d*)x/);
-    if (speedMatch) {
+    if (speedMatch && speedMatch[1]) {
       result.speed = parseFloat(speedMatch[1]);
     }
     
     // 解析 bitrate=2145kbits\/s
     const bitrateMatch = line.match(/bitrate=([^\s]+)/);
-    if (bitrateMatch) {
+    if (bitrateMatch && bitrateMatch[1]) {
       result.bitrate = bitrateMatch[1];
     }
     

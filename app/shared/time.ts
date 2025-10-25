@@ -32,17 +32,17 @@ export function parseHMSms(timeStr: string): number {
   
   if (parts.length === 1) {
     // SS.mmm 格式
-    return parseFloat(parts[0]) || 0;
+    return parseFloat(parts[0] || '0') || 0;
   } else if (parts.length === 2) {
     // MM:SS.mmm 格式
-    const minutes = parseInt(parts[0], 10) || 0;
-    const seconds = parseFloat(parts[1]) || 0;
+    const minutes = parseInt(parts[0] || '0', 10) || 0;
+    const seconds = parseFloat(parts[1] || '0') || 0;
     return minutes * 60 + seconds;
   } else if (parts.length === 3) {
     // HH:MM:SS.mmm 格式
-    const hours = parseInt(parts[0], 10) || 0;
-    const minutes = parseInt(parts[1], 10) || 0;
-    const seconds = parseFloat(parts[2]) || 0;
+    const hours = parseInt(parts[0] || '0', 10) || 0;
+    const minutes = parseInt(parts[1] || '0', 10) || 0;
+    const seconds = parseFloat(parts[2] || '0') || 0;
     return hours * 3600 + minutes * 60 + seconds;
   }
 

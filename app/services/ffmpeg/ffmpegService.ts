@@ -40,7 +40,7 @@ export class FfmpegService {
   /**
    * 执行视频转码
    */
-  async transcode(job: Job, onProgress: (progress: Progress) => void): Promise<void> {
+  async transcode(job: Job, onProgress: (progress: Progress) => void): Promise<number> {
     const { opts } = job;
     
     // 获取输出文件路径
@@ -111,6 +111,9 @@ export class FfmpegService {
         jobId: job.id,
         output: finalOutputPath
       });
+
+      // 返回进程PID
+      return process.pid!;
 
     } catch (error) {
       this.logger.error('转码任务失败', {

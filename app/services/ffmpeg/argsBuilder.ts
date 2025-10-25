@@ -59,7 +59,7 @@ export class ArgsBuilder {
     extraArgs: string[] = [],
     subtitlePath?: string
   ): string[] {
-    // 验证和转义路径
+    // 验证路径（但不转义，因为spawn使用数组参数）
     const inputValidation = PathEscapeUtils.validatePath(input);
     if (!inputValidation.valid) {
       throw new Error(`输入路径无效: ${inputValidation.reason}`);
@@ -70,13 +70,9 @@ export class ArgsBuilder {
       throw new Error(`输出路径无效: ${outputValidation.reason}`);
     }
 
-    // 转义路径
-    const escapedInput = PathEscapeUtils.escapeInputPath(input);
-    const escapedOutput = PathEscapeUtils.escapeOutputPath(output);
-
     const args: string[] = [
       '-y', // 覆盖输出文件
-      '-i', escapedInput,
+      '-i', input, // 直接使用原始路径
       ...this.buildVideoArgs(codec, preset, container, audio, fastStart),
       ...extraArgs
     ];
@@ -85,15 +81,16 @@ export class ArgsBuilder {
     if (subtitlePath) {
       const subtitleValidation = PathEscapeUtils.validatePath(subtitlePath);
       if (subtitleValidation.valid) {
-        const escapedSubtitle = PathEscapeUtils.escapeSubtitlePath(subtitlePath);
-        args.push('-vf', `subtitles=${escapedSubtitle}`);
+        // 字幕路径需要在滤镜字符串中转义
+        const escapedSubtitle = PathEscapeUtils.escapeSubtitleFilterPath(subtitlePath);
+        args.push('-vf', `subtitles='${escapedSubtitle}'`);
       } else {
         throw new Error(`字幕路径无效: ${subtitleValidation.reason}`);
       }
     }
 
     args.push(
-      escapedOutput,
+      output, // 直接使用原始路径
       '-progress', 'pipe:1', // 输出进度到 stdout
       '-nostats' // 禁用统计信息
     );
