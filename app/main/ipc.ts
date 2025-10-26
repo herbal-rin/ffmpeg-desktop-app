@@ -76,9 +76,14 @@ function initializeServices(): void {
         });
       });
     }
+    
+    logger.info('IPC服务已初始化');
   } catch (error) {
-    logger.error('初始化服务失败', { error: error instanceof Error ? error.message : String(error) });
-    throw error;
+    // FFmpeg 未配置时，延迟初始化服务
+    logger.warn('FFmpeg未配置，延迟初始化服务', { 
+      error: error instanceof Error ? error.message : String(error) 
+    });
+    // 不抛出错误，允许用户进入设置页配置 FFmpeg
   }
 }
 

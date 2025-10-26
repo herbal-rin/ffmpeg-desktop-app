@@ -201,36 +201,6 @@ export const ToolsPage: React.FC = () => {
     }
   }, 400); // 400ms 防抖
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handlePreview = async (_type: 'trim' | 'gif') => {
-    if (!selectedFile) return;
-
-    try {
-      if (type === 'trim') {
-        await window.api.invoke('tools/trim/preview', {
-          input: selectedFile.tempPath,
-          range: timeRange,
-          previewSeconds: 8,
-          scaleHalf: true
-        });
-      } else if (type === 'gif') {
-        await window.api.invoke('tools/gif/preview', {
-          input: selectedFile.tempPath,
-          range: timeRange,
-          fps: gifFps,
-          maxWidth: gifMaxWidth,
-          dithering: gifDithering
-        });
-      }
-    } catch (error) {
-      setToast({
-        show: true,
-        message: '预览生成失败',
-        type: 'error',
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  };
 
   // 导出文件
   const handleExport = async (type: 'trim' | 'gif' | 'audio') => {

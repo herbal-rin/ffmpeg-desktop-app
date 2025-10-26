@@ -321,9 +321,9 @@ FFmpeg 可执行文件路径未配置。
       errors.push('语言设置无效');
     }
     
-    // 检查主题设置
+    // 检查主题设置（支持 'system'）
     const theme = this.store.get('theme');
-    if (!theme || !['light', 'dark'].includes(theme)) {
+    if (!theme || !['light', 'dark', 'system'].includes(theme)) {
       errors.push('主题设置无效');
     }
     
