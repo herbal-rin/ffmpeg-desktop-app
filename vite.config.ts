@@ -24,6 +24,6 @@ export default defineConfig({
   },
   server: {
     port: 5173,
-    strictPort: true
+    strictPort: false  // 允许自动切换端口
   }
 });
