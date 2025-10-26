@@ -17,6 +17,8 @@ interface FileInfo {
   probeResult?: ProbeResult;
   error?: string;
   tempPath?: string; // 临时文件路径
+  transferProgress?: number; // 传输进度 0-100
+  isTransferring?: boolean; // 是否正在传输
 }
 
 /**
@@ -100,16 +102,69 @@ export function CompressPage() {
       
       const fileInfo: FileInfo = { file };
       
+      // 标记为正在传输
+      fileInfo.isTransferring = true;
+      fileInfo.transferProgress = 0;
+      setFiles((prev) => {
+        const updated = [...prev];
+        updated[prev.length] = fileInfo;
+        return updated;
+      });
+      
       try {
         // 将文件保存到临时目录
         console.log('💾 保存文件到临时目录...');
-        const fileData = await file.arrayBuffer();
-        // 将 ArrayBuffer 转换为数组，因为 IPC 不支持直接传递 ArrayBuffer
-        const fileDataArray = Array.from(new Uint8Array(fileData));
-        const result = await window.api.invoke('file/save-temp', {
-          fileData: fileDataArray,
-          fileName: file.name
-        });
+        
+        // 使用File API复制文件到主进程，采用分块传输避免数组长度限制
+        const fileBuffer = await file.arrayBuffer();
+        const uint8Array = new Uint8Array(fileBuffer);
+        
+        // 分块传输以避免数组长度限制（每个chunk限制较小以避免内存问题）
+        const maxChunkSize = 10 * 1024 * 1024; // 10MB chunks，避免数组长度限制同时提高效率
+        let tempPath = '';
+        
+        for (let offset = 0; offset < uint8Array.length; offset += maxChunkSize) {
+          const end = Math.min(offset + maxChunkSize, uint8Array.length);
+          const chunk = uint8Array.slice(offset, end);
+          
+          // 使用循环转换为数组，避免Array.from的大数组限制
+          const chunkArray: number[] = new Array(chunk.length);
+          for (let i = 0; i < chunk.length; i++) {
+            chunkArray[i] = chunk[i];
+          }
+          
+          const isFirstChunk = offset === 0;
+          const isLastChunk = end >= uint8Array.length;
+          
+          const result = await window.api.invoke('file/save-temp-chunk', {
+            fileData: chunkArray,
+            fileName: file.name,
+            isFirstChunk,
+            isLastChunk
+          });
+          
+          if (isFirstChunk || !tempPath) {
+            tempPath = result.tempPath;
+          }
+          
+          // 更新传输进度
+          const progress = Math.round((end / uint8Array.length) * 100);
+          fileInfo.transferProgress = progress;
+          setFiles((prev) => {
+            const updated = [...prev];
+            const index = updated.findIndex(f => f.file.name === file.name);
+            if (index >= 0) {
+              updated[index] = { ...updated[index], transferProgress: progress };
+            }
+            return updated;
+          });
+          
+          console.log(`📦 传输进度: ${end}/${uint8Array.length} (${progress}%)`);
+        }
+        
+        // 传输完成
+        fileInfo.isTransferring = false;
+        const result = { tempPath };
         
         console.log('✅ 临时文件已保存:', result.tempPath);
         
@@ -297,6 +352,19 @@ export function CompressPage() {
                               </span>
                             )}
                           </div>
+                          {fileInfo.isTransferring && (
+                            <div className="mt-2">
+                              <div className="h-1.5 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                                <div 
+                                  className="h-full bg-blue-500 transition-all duration-300"
+                                  style={{ width: `${fileInfo.transferProgress || 0}%` }}
+                                />
+                              </div>
+                              <div className="text-xs text-gray-500 mt-1">
+                                传输中... {fileInfo.transferProgress || 0}%
+                              </div>
+                            </div>
+                          )}
                           {fileInfo.error && (
                             <div className="text-xs text-red-500 mt-1">
                               {fileInfo.error}
@@ -305,7 +373,7 @@ export function CompressPage() {
                         </div>
                         <button
                           onClick={() => handleRemoveFile(index)}
-                          disabled={isProcessing}
+                          disabled={isProcessing || fileInfo.isTransferring}
                           className="btn btn-sm btn-ghost text-red-500 hover:text-red-700"
                         >
                           移除

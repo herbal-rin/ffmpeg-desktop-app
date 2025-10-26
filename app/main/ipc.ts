@@ -559,6 +559,72 @@ export function setupIPC(): void {
   });
 
   /**
+   * 分块保存大文件到临时目录
+   */
+  ipcMain.handle('file/save-temp-chunk', async (_event, { fileData, fileName, isFirstChunk, isLastChunk }: { 
+    fileData: number[], 
+    fileName: string, 
+    isFirstChunk: boolean,
+    isLastChunk: boolean 
+  }) => {
+    try {
+      const fs = await import('fs');
+      const path = await import('path');
+      const os = await import('os');
+      
+      // 获取临时目录
+      const tempDir = path.join(os.tmpdir(), 'ffmpeg-app-temp');
+      if (!fs.existsSync(tempDir)) {
+        fs.mkdirSync(tempDir, { recursive: true });
+      }
+      
+      // 生成唯一文件名（只在第一个chunk时）
+      let tempFilePath: string;
+      if (isFirstChunk) {
+        const timestamp = Date.now();
+        const ext = path.extname(fileName);
+        const baseName = path.basename(fileName, ext);
+        const tempFileName = `${baseName}_${timestamp}${ext}`;
+        tempFilePath = path.join(tempDir, tempFileName);
+        
+        // 清理旧文件（如果存在）
+        if (fs.existsSync(tempFilePath)) {
+          fs.unlinkSync(tempFilePath);
+        }
+      } else {
+        // 获取之前保存的临时文件路径
+        const files = fs.readdirSync(tempDir).filter(f => f.startsWith(path.basename(fileName, path.extname(fileName))));
+        if (files.length === 0) {
+          throw new Error('临时文件丢失');
+        }
+        tempFilePath = path.join(tempDir, files[0]);
+      }
+      
+      // 追加写入数据
+      const buffer = Buffer.from(fileData);
+      fs.appendFileSync(tempFilePath, buffer);
+      
+      if (isLastChunk) {
+        logger?.info('文件已完整保存到临时目录', { 
+          originalName: fileName,
+          tempPath: tempFilePath,
+          size: fs.statSync(tempFilePath).size
+        });
+      }
+      
+      return { tempPath: tempFilePath, isComplete: isLastChunk };
+    } catch (error) {
+      logger?.error('分块保存失败', { 
+        fileName,
+        isFirstChunk,
+        isLastChunk,
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      throw error;
+    }
+  });
+
+  /**
    * 保存文件到临时目录并返回路径
    */
   ipcMain.handle('file/save-temp', async (_event, { fileData, fileName }: { fileData: number[], fileName: string }) => {
@@ -580,7 +646,13 @@ export function setupIPC(): void {
       const tempFileName = `${baseName}_${timestamp}${ext}`;
       const tempFilePath = path.join(tempDir, tempFileName);
       
-      // 写入文件 - 将数字数组转换为 Buffer
+      logger?.info('开始保存文件', { 
+        originalName: fileName,
+        tempPath: tempFilePath,
+        dataSize: fileData.length
+      });
+      
+      // 写入文件 - 直接使用Buffer.from处理数字数组
       const buffer = Buffer.from(fileData);
       fs.writeFileSync(tempFilePath, buffer);
       
@@ -594,6 +666,7 @@ export function setupIPC(): void {
     } catch (error) {
       logger?.error('保存临时文件失败', { 
         fileName,
+        dataSize: fileData?.length,
         error: error instanceof Error ? error.message : String(error) 
       });
       throw error;

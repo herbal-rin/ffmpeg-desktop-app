@@ -74,7 +74,21 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       
       const response = await window.api.invoke('ffmpeg/queue/enqueue', options);
       
-      set({ isLoading: false });
+      // 同步本地jobs列表
+      set((state) => ({
+        jobs: [
+          ...state.jobs,
+          {
+            id: response.jobId,
+            opts: options,
+            status: 'queued',
+            createdAt: Date.now(),
+          }
+        ],
+        queueLength: state.jobs.length + 1,
+        isLoading: false,
+      }));
+      
       return response.jobId;
     } catch (error) {
       console.error('添加任务失败:', error);
@@ -175,7 +189,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       case 'job-start':
         if (job) {
           set((state) => ({
-            jobs: state.jobs.map(j => j.id === job.id ? { ...j, status: 'running' } : j),
+            jobs: state.jobs.map(j => j.id === job.id ? { ...j, status: 'running', startedAt: Date.now() } : j),
             currentJob: job,
             isProcessing: true,
           }));
@@ -187,7 +201,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, lastProgress: progress, status: 'running' }
+                ? { ...j, lastProgress: progress, status: 'running' as const }
                 : j
             ),
           }));
@@ -199,11 +213,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, status: 'completed', finishedAt: Date.now() }
+                ? { ...j, status: 'completed' as const, finishedAt: Date.now() }
                 : j
             ),
             currentJob: null,
-            isProcessing: false,
+            isProcessing: state.queueLength > 1,
           }));
         }
         break;
@@ -213,11 +227,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, status: 'failed', error: error || '未知错误', finishedAt: Date.now() }
+                ? { ...j, status: 'failed' as const, error: error || '未知错误', finishedAt: Date.now() }
                 : j
             ),
             currentJob: null,
-            isProcessing: false,
+            isProcessing: state.queueLength > 1,
             error: error || '任务执行失败',
           }));
         }
@@ -228,20 +242,21 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, status: 'canceled', finishedAt: Date.now() }
+                ? { ...j, status: 'canceled' as const, finishedAt: Date.now() }
                 : j
             ),
             currentJob: null,
-            isProcessing: false,
+            isProcessing: state.queueLength > 1,
           }));
         }
         break;
         
       case 'queue-empty':
-        set({
+        set((state) => ({
           isProcessing: false,
           currentJob: null,
-        });
+          queueLength: 0,
+        }));
         break;
     }
   },

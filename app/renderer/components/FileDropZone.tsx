@@ -139,7 +139,7 @@ export function FileDropZone({
       <input
         id="file-input"
         type="file"
-        accept={accept}
+        accept={accept === 'video/*' ? 'video/*,.mkv,.avi,.flv,.webm,.m4v,.3gp' : accept}
         multiple={multiple}
         onChange={handleFileSelect}
         className="hidden"
