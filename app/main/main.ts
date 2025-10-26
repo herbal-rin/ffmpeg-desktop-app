@@ -192,9 +192,9 @@ app.whenReady().then(() => {
   setupIPC();
   
   // 初始化服务
+  const logger = new ConsoleLogger('debug');
+  
   try {
-    const logger = new ConsoleLogger('debug');
-    
     // 尝试获取 FFmpeg 路径，如果未配置则不初始化相关服务
     let ffmpegPaths;
     try {
@@ -221,23 +221,28 @@ app.whenReady().then(() => {
       // 保持 mainWindow 可访问设置页
     }
     
-    // 设置工具 IPC（即使 FFmpeg 未配置也设置，允许进入设置页）
-    setupToolsIPC();
-    
-    // 初始化设置 IPC（立即初始化，webContents 稍后更新）
-    try {
-      logger.info('开始创建 SettingsIPC 实例...');
-      new SettingsIPC(logger, configService);
-      logger.info('SettingsIPC 实例创建成功');
-      logger.info('设置IPC已初始化');
-    } catch (error) {
-      logger.error('SettingsIPC 创建失败', { error: error instanceof Error ? error.message : String(error) });
-      throw error;
-    }
-    
     logger.info('所有服务初始化成功');
   } catch (error) {
-    console.error('服务初始化失败:', error);
+    // FFmpeg 未配置时，只记录警告，不阻止应用启动
+    logger.warn('服务初始化失败', { error: error instanceof Error ? error.message : String(error) });
+  }
+  
+  // 初始化设置 IPC（在 try-catch 外，确保即使 FFmpeg 未配置也能注册）
+  try {
+    logger.info('开始创建 SettingsIPC 实例...');
+    new SettingsIPC(logger, configService);
+    logger.info('SettingsIPC 实例创建成功');
+    logger.info('设置IPC已初始化');
+  } catch (error) {
+    logger.error('SettingsIPC 创建失败', { error: error instanceof Error ? error.message : String(error) });
+  }
+  
+  // 设置工具 IPC（在 try-catch 外，确保即使 FFmpeg 未配置也能注册）
+  try {
+    setupToolsIPC();
+    logger.info('工具 IPC 已设置');
+  } catch (error) {
+    logger.warn('工具 IPC 设置失败（FFmpeg 未配置）', { error: error instanceof Error ? error.message : String(error) });
   }
 
   // 创建主窗口
