@@ -7,7 +7,7 @@ import { JobQueueTable } from '../components/JobQueueTable';
 import { useJobsStore } from '../store/useJobsStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { t, formatFileSize, formatDuration } from '../i18n';
-import { TranscodeOptions, AudioPolicy, Container, VideoCodec, ProbeResult } from '../../shared/types';
+import { TranscodeOptions, AudioPolicy, Container, VideoCodec, ProbeResult, PresetName, VideoPreset } from '../../shared/types';
 
 /**
  * 文件信息接口
@@ -17,6 +17,36 @@ interface FileInfo {
   probeResult?: ProbeResult;
   error?: string;
   tempPath?: string; // 临时文件路径
+}
+
+/**
+ * 获取预设参数
+ */
+function getPresetArgs(presetName: string, codec: VideoCodec): string[] {
+  const preset = presetName as PresetName;
+  
+  switch (preset) {
+    case 'hq_slow':
+      if (codec === 'libx264') return ['-preset', 'slow', '-crf', '18'];
+      if (codec === 'libx265') return ['-preset', 'slow', '-crf', '20'];
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '19', '-b:v', '0'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '22', '-b:v', '0'];
+      return ['-crf', '23'];
+    case 'balanced':
+      if (codec === 'libx264') return ['-preset', 'medium', '-crf', '23'];
+      if (codec === 'libx265') return ['-preset', 'medium', '-crf', '25'];
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '22', '-b:v', '0'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '25', '-b:v', '0'];
+      return ['-crf', '23'];
+    case 'fast_small':
+      if (codec === 'libx264') return ['-preset', 'fast', '-crf', '28'];
+      if (codec === 'libx265') return ['-preset', 'fast', '-crf', '30'];
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '25', '-b:v', '0'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '28', '-b:v', '0'];
+      return ['-crf', '28'];
+    default:
+      return [];
+  }
 }
 
 /**
@@ -157,14 +187,17 @@ export function CompressPage() {
           continue;
         }
 
+        const actualCodec = videoCodec === 'auto' ? 'libx264' : videoCodec;
+        const presetArgs = getPresetArgs(preset, actualCodec);
+        
         const options: TranscodeOptions = {
           input: fileInfo.tempPath, // 使用临时路径
           outputDir,
           container,
-          videoCodec: videoCodec === 'auto' ? 'libx264' : videoCodec,
+          videoCodec: actualCodec,
           videoPreset: {
-            name: preset as any,
-            args: [] // 这里应该根据预设和编码器生成参数
+            name: preset as PresetName,
+            args: presetArgs
           },
           audio,
           fastStart: container === 'mp4'

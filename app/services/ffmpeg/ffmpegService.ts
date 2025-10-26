@@ -359,8 +359,17 @@ export class FfmpegService extends EventEmitter {
   private getOutputPath(opts: any): string {
     const inputName = path.basename(opts.input, path.extname(opts.input));
     const outputName = opts.outputName || inputName;
+    
+    // 根据编码器添加后缀
+    let suffix = '';
+    if (opts.videoCodec === 'libx264' || opts.videoCodec === 'h264_nvenc' || opts.videoCodec === 'h264_qsv' || opts.videoCodec === 'h264_videotoolbox') {
+      suffix = '_X264';
+    } else if (opts.videoCodec === 'libx265' || opts.videoCodec === 'hevc_nvenc' || opts.videoCodec === 'hevc_qsv' || opts.videoCodec === 'hevc_videotoolbox') {
+      suffix = '_X265';
+    }
+    
     const extension = opts.container === 'mp4' ? '.mp4' : '.mkv';
-    return path.join(opts.outputDir, `${outputName}${extension}`);
+    return path.join(opts.outputDir, `${outputName}${suffix}${extension}`);
   }
 
   /**
