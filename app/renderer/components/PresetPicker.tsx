@@ -18,7 +18,7 @@ function getPresetEstimate(presetName: string, _codec: VideoCodec | 'auto'): Pre
   const estimates: Record<string, PresetEstimate> = {
     'hq_slow': {
       encodingTime: '2-4x',
-      fileSize: '最小',
+      fileSize: '最大（高CRF值18-20）',  // 修正：高质量对应大文件
       quality: '最高'
     },
     'balanced': {
@@ -28,7 +28,7 @@ function getPresetEstimate(presetName: string, _codec: VideoCodec | 'auto'): Pre
     },
     'fast_small': {
       encodingTime: '0.5-1x',
-      fileSize: '较大',
+      fileSize: '最小（高CRF值28-30）',  // 修正：快速小文件对应最小文件
       quality: '一般'
     }
   };
@@ -143,7 +143,7 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
           
           <div className="grid grid-cols-2 gap-4">
             {/* CRF */}
-            <div>
+            <div className="space-y-2">
               <label className="label text-xs">CRF (质量)</label>
               <input
                 type="number"
@@ -154,31 +154,40 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
                 disabled={disabled}
                 className="input text-sm"
               />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                • 值越低质量越高体积越大<br/>
+                • H.264推荐:18-28, H.265推荐:20-30<br/>
+                • 18=无损质量(大文件), 28=小文件(质量可接受)
+              </div>
             </div>
             
             {/* Preset */}
-            <div>
-              <label className="label text-xs">Preset</label>
+            <div className="space-y-2">
+              <label className="label text-xs">Preset (编码速度)</label>
               <select
                 value={customConfig.preset}
                 onChange={(e) => handleCustomConfigChange('preset', e.target.value)}
                 disabled={disabled}
                 className="select text-sm"
               >
-                <option value="ultrafast">ultrafast</option>
+                <option value="ultrafast">ultrafast (最快)</option>
                 <option value="superfast">superfast</option>
                 <option value="veryfast">veryfast</option>
                 <option value="faster">faster</option>
                 <option value="fast">fast</option>
-                <option value="medium">medium</option>
+                <option value="medium">medium (推荐)</option>
                 <option value="slow">slow</option>
                 <option value="slower">slower</option>
-                <option value="veryslow">veryslow</option>
+                <option value="veryslow">veryslow (最慢，压缩率最高)</option>
               </select>
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                控制编码速度与压缩效率平衡<br/>
+                慢速=更好压缩率但耗时更长
+              </div>
             </div>
             
             {/* Maxrate */}
-            <div>
+            <div className="space-y-2">
               <label className="label text-xs">最大码率 (可选)</label>
               <input
                 type="text"
@@ -188,10 +197,14 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
                 disabled={disabled}
                 className="input text-sm"
               />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                留空则不限制码率<br/>
+                主要用于控制文件大小
+              </div>
             </div>
             
             {/* Bufsize */}
-            <div>
+            <div className="space-y-2">
               <label className="label text-xs">缓冲区大小 (可选)</label>
               <input
                 type="text"
@@ -201,6 +214,10 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
                 disabled={disabled}
                 className="input text-sm"
               />
+              <div className="text-xs text-gray-500 dark:text-gray-400">
+                留空则自动计算<br/>
+                与最大码率配合使用
+              </div>
             </div>
           </div>
         </div>

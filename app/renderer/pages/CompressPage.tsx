@@ -55,6 +55,7 @@ function getPresetArgs(presetName: string, codec: VideoCodec): string[] {
 export function CompressPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [outputDir, setOutputDir] = useState<string>('');
+  const [outputFileName, setOutputFileName] = useState<string>(''); // 新增输出文件名
   const [container, setContainer] = useState<Container>('mp4');
   const [videoCodec, setVideoCodec] = useState<VideoCodec | 'auto'>('auto');
   const [preset, setPreset] = useState<string>('balanced');
@@ -90,23 +91,35 @@ export function CompressPage() {
 
   // 处理文件选择
   const handleFilesSelected = useCallback(async (selectedFiles: File[]) => {
+    console.log('📁 收到文件:', selectedFiles.length, '个文件');
+    
     const newFiles: FileInfo[] = [];
     
     for (const file of selectedFiles) {
+      console.log('📄 处理文件:', file.name, '类型:', file.type, '大小:', formatFileSize(file.size));
+      
       const fileInfo: FileInfo = { file };
       
       try {
         // 将文件保存到临时目录
+        console.log('💾 保存文件到临时目录...');
         const fileData = await file.arrayBuffer();
+        // 将 ArrayBuffer 转换为数组，因为 IPC 不支持直接传递 ArrayBuffer
+        const fileDataArray = Array.from(new Uint8Array(fileData));
         const result = await window.api.invoke('file/save-temp', {
-          fileData,
+          fileData: fileDataArray,
           fileName: file.name
         });
         
+        console.log('✅ 临时文件已保存:', result.tempPath);
+        
         // 使用临时路径进行探测
+        console.log('🔍 开始探测文件信息...');
         const probeResult = await window.api.invoke('ffmpeg/probe', {
           input: result.tempPath
         });
+        
+        console.log('✅ 探测完成:', probeResult);
         
         fileInfo.probeResult = probeResult;
         fileInfo.tempPath = result.tempPath;
@@ -114,12 +127,21 @@ export function CompressPage() {
         console.log('文件探测完成:', file.name, formatFileSize(file.size));
       } catch (error) {
         fileInfo.error = error instanceof Error ? error.message : '探测失败';
-        console.error('文件探测失败:', file.name, error);
+        console.error('❌ 文件探测失败:', file.name, error);
+        
+        // 显示详细错误信息给用户
+        if (error instanceof Error) {
+          console.error('错误详情:', error.message);
+          if (error.stack) {
+            console.error('错误堆栈:', error.stack);
+          }
+        }
       }
       
       newFiles.push(fileInfo);
     }
     
+    console.log('📊 准备添加', newFiles.length, '个文件到列表');
     setFiles(prev => [...prev, ...newFiles]);
   }, []);
 
@@ -193,6 +215,7 @@ export function CompressPage() {
         const options: TranscodeOptions = {
           input: fileInfo.tempPath, // 使用临时路径
           outputDir,
+          outputName: outputFileName || undefined, // 添加输出文件名
           container,
           videoCodec: actualCodec,
           videoPreset: {
@@ -440,22 +463,36 @@ export function CompressPage() {
                   <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-4">
                     {t('settings.output')}
                   </h3>
-                  <div className="flex items-center space-x-2">
-                    <input
-                      type="text"
-                      value={outputDir}
-                      onChange={(e) => setOutputDir(e.target.value)}
-                      placeholder="输出目录"
-                      disabled={isProcessing}
-                      className="input flex-1"
-                    />
-                    <button
-                      onClick={handleSelectOutputDir}
-                      disabled={isProcessing}
-                      className="btn btn-outline"
-                    >
-                      {t('compress.selectOutputDir')}
-                    </button>
+                  <div className="space-y-3">
+                    <div className="flex items-center space-x-2">
+                      <input
+                        type="text"
+                        value={outputDir}
+                        onChange={(e) => setOutputDir(e.target.value)}
+                        placeholder="输出目录"
+                        disabled={isProcessing}
+                        className="input flex-1"
+                      />
+                      <button
+                        onClick={handleSelectOutputDir}
+                        disabled={isProcessing}
+                        className="btn btn-outline"
+                      >
+                        {t('compress.selectOutputDir')}
+                      </button>
+                    </div>
+                    {/* 输出文件名 */}
+                    <div>
+                      <label className="label text-xs">输出文件名 (可选)</label>
+                      <input
+                        type="text"
+                        value={outputFileName}
+                        onChange={(e) => setOutputFileName(e.target.value)}
+                        placeholder="留空则自动使用输入文件名"
+                        disabled={isProcessing}
+                        className="input"
+                      />
+                    </div>
                   </div>
                 </div>
               </div>

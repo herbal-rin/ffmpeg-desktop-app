@@ -561,7 +561,7 @@ export function setupIPC(): void {
   /**
    * 保存文件到临时目录并返回路径
    */
-  ipcMain.handle('file/save-temp', async (_event, { fileData, fileName }: { fileData: ArrayBuffer, fileName: string }) => {
+  ipcMain.handle('file/save-temp', async (_event, { fileData, fileName }: { fileData: number[], fileName: string }) => {
     try {
       const fs = await import('fs');
       const path = await import('path');
@@ -580,7 +580,7 @@ export function setupIPC(): void {
       const tempFileName = `${baseName}_${timestamp}${ext}`;
       const tempFilePath = path.join(tempDir, tempFileName);
       
-      // 写入文件
+      // 写入文件 - 将数字数组转换为 Buffer
       const buffer = Buffer.from(fileData);
       fs.writeFileSync(tempFilePath, buffer);
       

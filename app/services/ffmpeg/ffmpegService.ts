@@ -227,11 +227,26 @@ export class FfmpegService extends EventEmitter {
    * 等待进程完成
    */
   private async waitForCompletion(process: ChildProcess, jobId: string): Promise<void> {
+    let stderrBuffer = Buffer.alloc(0);
+    
+    // 收集 stderr 输出
+    process.stderr?.on('data', (data: Buffer) => {
+      stderrBuffer = Buffer.concat([stderrBuffer, data]);
+    });
+
     return new Promise((resolve, reject) => {
       process.on('close', (code) => {
         if (code === 0) {
           resolve();
         } else {
+          const stderr = stderrBuffer.toString('utf8');
+          const errorLines = stderr.split('\n').slice(-40).join('\n'); // 只显示最后40行
+          this.logger.error('FFmpeg 执行失败，stderr 输出', {
+            jobId,
+            exitCode: code,
+            stderr: errorLines || '无 stderr 输出'
+          });
+          
           const error = new Error(`FFmpeg 执行失败 (退出码: ${code})`);
           error.name = `${ERRORS.FFMPEG_EXIT}_${code}`;
           reject(error);
@@ -239,9 +254,11 @@ export class FfmpegService extends EventEmitter {
       });
 
       process.on('error', (error) => {
+        const stderr = stderrBuffer.toString('utf8');
         this.logger.error('FFmpeg 进程错误', {
           jobId,
-          error: error.message
+          error: error.message,
+          stderr: stderr || '无 stderr 输出'
         });
         reject(error);
       });

@@ -169,7 +169,7 @@ export interface OpenPathResponse {
 }
 
 export interface SaveTempRequest {
-  fileData: ArrayBuffer;
+  fileData: number[]; // 使用数字数组而不是ArrayBuffer，因为IPC需要序列化
   fileName: string;
 }
 

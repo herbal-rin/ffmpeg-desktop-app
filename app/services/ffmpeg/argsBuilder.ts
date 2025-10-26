@@ -17,9 +17,9 @@ export class ArgsBuilder {
   static buildVideoArgs(
     codec: VideoCodec,
     preset: VideoPreset,
-    container: Container,
+    _container: Container,
     audio: AudioPolicy,
-    fastStart: boolean = true
+    _fastStart: boolean = true
   ): string[] {
     const args: string[] = [];
     
@@ -84,16 +84,21 @@ export class ArgsBuilder {
       }
     }
 
+    // 显式指定输出容器格式（解决临时文件扩展名问题）
+    const format = container === 'mp4' ? 'mp4' : 'matroska';
+    args.push('-f', format);
+
     // 容器格式特定参数（必须在输出文件之前）
     if (container === 'mp4' && fastStart) {
       args.push('-movflags', '+faststart');
     }
 
-    args.push(
-      output, // 直接使用原始路径
-      '-progress', 'pipe:1', // 输出进度到 stdout
-      '-nostats' // 禁用统计信息
-    );
+    // 进度和统计参数必须在输出文件之前
+    args.push('-progress', 'pipe:1'); // 输出进度到 stdout
+    args.push('-nostats'); // 禁用统计信息
+    
+    // 输出文件必须在最后
+    args.push(output); // 直接使用原始路径
     
     return args;
   }
