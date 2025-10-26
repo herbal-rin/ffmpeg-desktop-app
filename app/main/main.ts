@@ -225,8 +225,15 @@ app.whenReady().then(() => {
     setupToolsIPC();
     
     // 初始化设置 IPC（立即初始化，webContents 稍后更新）
-    new SettingsIPC(logger, configService);
-    logger.info('设置IPC已初始化');
+    try {
+      logger.info('开始创建 SettingsIPC 实例...');
+      new SettingsIPC(logger, configService);
+      logger.info('SettingsIPC 实例创建成功');
+      logger.info('设置IPC已初始化');
+    } catch (error) {
+      logger.error('SettingsIPC 创建失败', { error: error instanceof Error ? error.message : String(error) });
+      throw error;
+    }
     
     logger.info('所有服务初始化成功');
   } catch (error) {
