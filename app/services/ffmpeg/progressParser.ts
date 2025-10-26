@@ -104,10 +104,10 @@ export class ProgressParser {
   static parseProgressLine(line: string): Partial<Progress> {
     const result: Partial<Progress> = {};
     
-    // 解析 out_time_ms=123456
+    // 解析 out_time_ms=123456 (单位是微秒，转换为毫秒)
     const timeMatch = line.match(/out_time_ms=(\d+)/);
     if (timeMatch && timeMatch[1]) {
-      result.timeMs = parseInt(timeMatch[1]);
+      result.timeMs = Math.floor(parseInt(timeMatch[1]) / 1000); // 微秒转毫秒
     }
     
     // 解析 speed=1.2x
