@@ -36,10 +36,18 @@ function createMainWindow(): void {
   });
 
   // 加载页面
-  if (isDev) {
-    mainWindow.loadURL('http://localhost:5173');
+  // 检查是否为开发模式
+  const isDevelopment = process.env.NODE_ENV === 'development';
+  
+  if (isDevelopment) {
+    // 开发模式：从环境变量获取 Vite 端口，默认 5173
+    const vitePort = process.env.VITE_PORT || '5173';
+    console.log(`[开发模式] 加载 Vite 服务器: http://localhost:${vitePort}`);
+    mainWindow.loadURL(`http://localhost:${vitePort}`);
     mainWindow.webContents.openDevTools();
   } else {
+    // 生产模式：加载打包后的文件
+    console.log('[生产模式] 加载静态文件');
     mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
