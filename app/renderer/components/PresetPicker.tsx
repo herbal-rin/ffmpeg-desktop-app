@@ -117,9 +117,11 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
                 key={preset.value}
                 onClick={() => handlePresetChange(preset.value)}
                 disabled={disabled}
-                className={`btn btn-outline text-left p-3 h-auto ${
-                  value === preset.value ? 'bg-primary text-primary-foreground' : ''
-                }`}
+                className={`text-left p-4 h-auto transition-all ${
+                  value === preset.value 
+                    ? 'border-2 border-blue-500 bg-blue-50 dark:bg-blue-900/20 shadow-md ring-2 ring-blue-300' 
+                    : 'border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400'
+                } rounded-lg`}
               >
                 <div className="font-medium">{preset.label}</div>
                 <div className="text-xs opacity-75 mt-1">{preset.description}</div>

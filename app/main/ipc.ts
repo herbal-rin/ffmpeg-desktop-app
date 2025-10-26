@@ -224,7 +224,7 @@ export function setupIPC(): void {
   /**
    * 开始处理队列
    */
-  ipcMain.handle('ffmpeg/queue/start', async (_event, {}) => {
+  ipcMain.handle('ffmpeg/queue/start', async (_event) => {
     try {
       if (!jobQueue) {
         throw new Error('任务队列未初始化');
@@ -503,7 +503,7 @@ export function setupIPC(): void {
   /**
    * 选择输出目录
    */
-  ipcMain.handle('dialog/select-output-dir', async (_event, {}) => {
+  ipcMain.handle('dialog/select-output-dir', async (_event) => {
     try {
       const result = await dialog.showOpenDialog(mainWindow!, {
         title: '选择输出目录',

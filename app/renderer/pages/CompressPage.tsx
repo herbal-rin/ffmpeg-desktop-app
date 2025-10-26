@@ -439,14 +439,15 @@ export function CompressPage() {
                     <button
                       onClick={handleStartCompression}
                       disabled={isProcessing || files.length === 0}
-                      className="btn btn-sm btn-primary"
+                      className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-lg flex items-center space-x-2"
                     >
-                      {t('compress.startQueue')}
+                      <span className="text-lg">🚀</span>
+                      <span>{t('compress.startQueue')}</span>
                     </button>
                     <button
                       onClick={handleClearQueue}
                       disabled={isProcessing}
-                      className="btn btn-sm btn-outline"
+                      className="px-4 py-3 border-2 border-gray-300 dark:border-gray-600 hover:border-gray-400 dark:hover:border-gray-500 text-gray-700 dark:text-gray-300 font-medium rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                       {t('compress.clearQueue')}
                     </button>
