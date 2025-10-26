@@ -93,7 +93,21 @@ function initializeServices(): void {
 function reinitializeServices(): boolean {
   try {
     logger?.info('尝试重新初始化服务');
+    
+    // 销毁旧实例
+    if (ffmpegService) {
+      logger?.info('销毁旧的FfmpegService实例');
+      ffmpegService = null;
+    }
+    
+    if (jobQueue) {
+      logger?.info('销毁旧的JobQueue实例');
+      jobQueue = null;
+    }
+    
+    // 重新初始化服务
     initializeServices();
+    
     return ffmpegService !== null && jobQueue !== null;
   } catch (error) {
     logger?.error('重新初始化服务失败', { error: error instanceof Error ? error.message : String(error) });
