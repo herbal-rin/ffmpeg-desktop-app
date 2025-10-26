@@ -166,13 +166,11 @@ export class FfmpegService extends EventEmitter {
               ratio: ratio.toFixed(2)
             });
             
-            // 如果输出时长少于输入的80%，认为可能有问题
+            // 如果输出时长少于输入的80%，认为压缩失败
             if (ratio < 0.8) {
-              this.logger.warn('⚠️ 输出时长异常短，可能压缩失败', {
-                inputDurationSec: inputDurationSec.toFixed(2),
-                outputDurationSec: outputDurationSec.toFixed(2),
-                ratio: ratio.toFixed(2)
-              });
+              const error = new Error(`压缩失败：输出视频时长异常短（${outputDurationSec.toFixed(2)}秒，应为${inputDurationSec.toFixed(2)}秒）`);
+              error.name = 'COMPRESSION_FAILED';
+              throw error;
             }
           }
         } catch (probeError) {
