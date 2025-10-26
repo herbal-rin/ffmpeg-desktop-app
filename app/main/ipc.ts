@@ -582,6 +582,9 @@ export function setupIPC(): void {
   /**
    * 分块保存大文件到临时目录
    */
+  // 用于存储每个文件的临时路径
+  const tempFilePaths = new Map<string, string>();
+
   ipcMain.handle('file/save-temp-chunk', async (_event, { fileData, fileName, isFirstChunk, isLastChunk }: { 
     fileData: number[], 
     fileName: string, 
@@ -612,13 +615,15 @@ export function setupIPC(): void {
         if (fs.existsSync(tempFilePath)) {
           fs.unlinkSync(tempFilePath);
         }
+        
+        // 存储路径供后续chunk使用
+        tempFilePaths.set(fileName, tempFilePath);
       } else {
-        // 获取之前保存的临时文件路径
-        const files = fs.readdirSync(tempDir).filter(f => f.startsWith(path.basename(fileName, path.extname(fileName))));
-        if (files.length === 0) {
-          throw new Error('临时文件丢失');
+        // 从Map中获取临时文件路径
+        tempFilePath = tempFilePaths.get(fileName);
+        if (!tempFilePath) {
+          throw new Error('临时文件路径丢失');
         }
-        tempFilePath = path.join(tempDir, files[0]);
       }
       
       // 追加写入数据
@@ -626,11 +631,15 @@ export function setupIPC(): void {
       fs.appendFileSync(tempFilePath, buffer);
       
       if (isLastChunk) {
+        const fileSize = fs.statSync(tempFilePath).size;
         logger?.info('文件已完整保存到临时目录', { 
           originalName: fileName,
           tempPath: tempFilePath,
-          size: fs.statSync(tempFilePath).size
+          size: fileSize
         });
+        
+        // 清理Map
+        tempFilePaths.delete(fileName);
       }
       
       return { tempPath: tempFilePath, isComplete: isLastChunk };
