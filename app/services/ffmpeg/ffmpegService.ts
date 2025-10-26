@@ -233,33 +233,37 @@ export class FfmpegService extends EventEmitter {
   ): void {
     let buffer = Buffer.alloc(0);
     let receivedAnyData = false;
+    let currentProgress: Partial<Progress> = {}; // 累积的progress状态
 
     process.stdout?.on('data', (data: Buffer) => {
       receivedAnyData = true;
       buffer = Buffer.concat([buffer, data]);
       
-      const fullText = buffer.toString('utf8');
-      this.logger.debug('FFmpeg stdout data', { 
-        size: data.length, 
-        bufferSize: buffer.length,
-        preview: fullText.slice(0, 200)
-      });
-      
       // 按行分割数据
+      const fullText = buffer.toString('utf8');
       const lines = fullText.split('\n');
       buffer = Buffer.from(lines.pop() || '', 'utf8'); // 保留最后一行（可能不完整）
       
-      this.logger.debug('FFmpeg stdout lines', { lineCount: lines.length });
-      
       for (const line of lines) {
-        this.logger.debug('FFmpeg stdout line', { line: line.trim() });
         if (ProgressParser.isValidProgressLine(line)) {
-          this.logger.info('Valid FFmpeg progress line', { line });
+          // 解析这一行并累积到currentProgress
           const partial = ProgressParser.parseProgressLine(line);
-          this.logger.info('FFmpeg progress parsed', { partial });
-          const progress = ProgressParser.calculateProgress(partial, totalDurationMs);
-          this.logger.info('FFmpeg progress calculated', { progress, totalDurationMs });
-          onProgress(progress);
+          
+          // 累积更新progress状态
+          if (partial.timeMs !== undefined) currentProgress.timeMs = partial.timeMs;
+          if (partial.speed !== undefined) currentProgress.speed = partial.speed;
+          if (partial.bitrate !== undefined) currentProgress.bitrate = partial.bitrate;
+          
+          // 只有当timeMs更新时才计算并发送进度（减少发送频率）
+          if (partial.timeMs !== undefined) {
+            const progress = ProgressParser.calculateProgress(currentProgress, totalDurationMs);
+            this.logger.debug('FFmpeg progress', { 
+              timeMs: currentProgress.timeMs, 
+              ratio: progress.ratio.toFixed(4),
+              speed: currentProgress.speed 
+            });
+            onProgress(progress);
+          }
         }
       }
     });
@@ -272,9 +276,24 @@ export class FfmpegService extends EventEmitter {
       this.logger.error('FFmpeg stdout error', { error });
     });
 
+    let stderrBuffer = Buffer.alloc(0);
     process.stderr?.on('data', (data: Buffer) => {
+      stderrBuffer = Buffer.concat([stderrBuffer, data]);
       const stderr = data.toString('utf8');
-      this.logger.debug('FFmpeg stderr', { stderr });
+      this.logger.info('FFmpeg stderr output', { 
+        size: data.length,
+        preview: stderr.slice(0, 500) 
+      });
+    });
+    
+    process.stderr?.on('end', () => {
+      const fullStderr = stderrBuffer.toString('utf8');
+      if (fullStderr) {
+        this.logger.info('FFmpeg stderr ended', { 
+          totalSize: fullStderr.length,
+          lines: fullStderr.split('\n').length 
+        });
+      }
     });
   }
 
