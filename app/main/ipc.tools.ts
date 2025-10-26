@@ -106,7 +106,8 @@ async function tryLosslessThenPrecise(
         logger!.warn('无损快剪失败，自动切换到精准剪', { 
           reason: '容器/编解码器不兼容或关键帧问题',
           originalMode: 'lossless',
-          fallbackMode: 'precise'
+          fallbackMode: 'precise',
+          hint: '小贴士：首帧异常属关键帧特性，换精准剪可解决'
         });
 
         // 构建精准剪参数
@@ -324,12 +325,12 @@ export function setupToolsIPC() {
       let args: string[];
 
       if (request.mode === 'lossless' && isLosslessSuitable) {
-        // 无损快剪：-ss 前置，添加 -map 0 和 -avoid_negative_ts make_zero
+        // 无损快剪：-ss/-to 前置以加速，添加 -c copy、-map 0、-avoid_negative_ts make_zero
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
           '-to', request.range.endSec.toString(),
-          '-i', PathEscapeUtils.escapeInputPath(request.input),
+          '-i', request.input, // 直接使用原始路径（spawn 使用数组参数）
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
@@ -352,7 +353,7 @@ export function setupToolsIPC() {
           '-y',
           '-ss', request.range.startSec.toString(),
           '-accurate_seek', // 精准定位
-          '-i', PathEscapeUtils.escapeInputPath(request.input),
+          '-i', request.input, // 直接使用原始路径
           '-to', (request.range.endSec - request.range.startSec).toString(), // 使用持续时间
           ...videoArgs,
           '-force_key_frames', 'expr:gte(t,0)', // 强制关键帧
@@ -365,7 +366,12 @@ export function setupToolsIPC() {
         }
       }
 
-      logger!.info('开始视频裁剪导出', { args });
+      logger!.info('开始视频裁剪导出', { 
+        mode: request.mode,
+        args: args.join(' '), // 记录最终命令行参数
+        inputFile: request.input,
+        outputPath: tempPath
+      });
 
       // 尝试无损快剪，失败时自动回退到精准剪
       return tryLosslessThenPrecise(request, args, outputPath, tempPath);

@@ -242,9 +242,26 @@ export class PreviewService extends EventEmitter {
       endSec: range.startSec + actualDuration
     };
 
+    // 创建专用的临时目录用于调色板（固定在 {userData}/temp/previews/{jobId}/）
+    const jobId = crypto.randomUUID();
+    const jobDir = path.join(this.tempDir, jobId);
+    fs.mkdirSync(jobDir, { recursive: true });
+    
     const outputPath = path.join(this.tempDir, `${crypto.randomUUID()}.gif`);
-    const palettePath = path.join(this.tempDir, `${crypto.randomUUID()}_palette.png`);
+    const palettePath = path.join(jobDir, 'palette.png');
     const tempPath = `${outputPath}.tmp`;
+
+    // 确保在任务完成/取消时清理jobId目录
+    const cleanupJobDir = () => {
+      try {
+        if (fs.existsSync(jobDir)) {
+          fs.rmSync(jobDir, { recursive: true, force: true });
+          this.logger.debug('已清理jobId目录', { jobDir });
+        }
+      } catch (error) {
+        this.logger.warn('清理jobId目录失败', { jobDir, error });
+      }
+    };
 
     return new Promise(async (resolve, reject) => {
       try {
@@ -253,9 +270,9 @@ export class PreviewService extends EventEmitter {
           '-y',
           '-ss', previewRange.startSec.toString(),
           '-to', previewRange.endSec.toString(),
-          '-i', PathEscapeUtils.escapeInputPath(input),
+          '-i', input, // 直接使用原始路径
           '-vf', `fps=${fps},scale='min(${maxWidth},iw)':-1:flags=lanczos,palettegen=max_colors=128`,
-          PathEscapeUtils.escapeOutputPath(palettePath)
+          palettePath // 输出到jobId目录
         ];
 
         this.logger.info('开始生成 GIF 调色板', { paletteArgs, previewDuration: actualDuration });
@@ -279,18 +296,18 @@ export class PreviewService extends EventEmitter {
           paletteProcess.on('error', paletteReject);
         });
 
-        // 第二步：应用调色板生成 GIF
+        // 第二步：应用调色板生成 GIF（使用相同的 -ss/-to 区间）
         const gifArgs = [
           '-y',
           '-ss', previewRange.startSec.toString(),
           '-to', previewRange.endSec.toString(),
-          '-i', PathEscapeUtils.escapeInputPath(input),
-          '-i', PathEscapeUtils.escapeInputPath(palettePath),
+          '-i', input, // 直接使用原始路径
+          '-i', palettePath, // 调色板文件
           '-lavfi', `fps=${fps},scale='min(${maxWidth},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${dithering}:bayer_scale=5`,
           '-loop', '0', // 无限循环
           '-progress', 'pipe:1',
           '-nostats',
-          PathEscapeUtils.escapeOutputPath(tempPath)
+          tempPath
         ];
 
         this.logger.info('开始生成 GIF', { gifArgs });
@@ -321,8 +338,8 @@ export class PreviewService extends EventEmitter {
         this.currentProcess.on('close', (code) => {
           this.currentProcess = null;
           
-          // 清理调色板文件
-          this.cleanupTempFile(palettePath);
+          // 清理整个jobId目录（包含palette.png）
+          cleanupJobDir();
           
           if (code === 0) {
             try {
@@ -336,6 +353,7 @@ export class PreviewService extends EventEmitter {
                 outputPath, 
                 error: error instanceof Error ? error.message : String(error) 
               });
+              this.cleanupTempFile(tempPath);
               reject(new Error('重命名 GIF 预览文件失败'));
             }
           } else {
@@ -350,7 +368,8 @@ export class PreviewService extends EventEmitter {
         this.currentProcess.on('error', (error) => {
           this.currentProcess = null;
           this.cleanupTempFile(tempPath);
-          this.cleanupTempFile(palettePath);
+          // 清理整个jobId目录
+          cleanupJobDir();
           this.logger.error('GIF 预览进程启动失败', { 
             error: error.message,
             tempPath 
@@ -361,7 +380,9 @@ export class PreviewService extends EventEmitter {
 
         this.emit('preview-start', { tempPath });
       } catch (error) {
-        this.cleanupTempFile(palettePath);
+        // 清理整个jobId目录
+        cleanupJobDir();
+        this.cleanupTempFile(tempPath);
         reject(error);
       }
     });
