@@ -117,8 +117,8 @@ describe('JobQueue', () => {
       jobQueue.on('job-progress', (data) => events.push({ type: 'job-progress', data }));
       jobQueue.on('job-done', (_data) => events.push({ type: 'job-done', data: _data }));
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      // 测试只需要调用 enqueue，不关心返回值
+      jobQueue.enqueue(opts);
 
       // 等待任务完成
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -140,7 +140,6 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       expect(jobQueue.getStatus().queueLength).toBe(0); // 任务立即开始执行
 
@@ -162,7 +161,6 @@ describe('JobQueue', () => {
       const events: any[] = [];
       jobQueue.on('job-canceled', (data) => events.push({ type: 'job-canceled', data }));
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       
       // 等待任务开始
@@ -186,7 +184,6 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const job = jobQueue.enqueue(opts);
       
       // 等待任务开始
@@ -214,8 +211,8 @@ describe('JobQueue', () => {
         audio: { mode: 'copy' }
       };
 
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      // 测试不需要使用 job 变量
+      jobQueue.enqueue(opts);
       const status = jobQueue.getStatus();
 
       expect(status.queueLength).toBe(0); // 任务立即开始执行，队列为空

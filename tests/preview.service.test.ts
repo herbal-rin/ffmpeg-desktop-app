@@ -125,7 +125,7 @@ describe('PreviewService', () => {
 
   describe('超时处理', () => {
     it('should handle long running preview processes', async () => {
-      const mockSpawn = vi.fn(() => ({
+      const mockSpawn = vi.fn<any, any>(() => ({
         pid: 12345,
         killed: false,
         kill: vi.fn(),
@@ -135,7 +135,7 @@ describe('PreviewService', () => {
       }));
 
       const { spawn } = await import('child_process');
-      vi.mocked(spawn).mockImplementation(mockSpawn);
+      vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
       // 模拟长时间运行的进程
       const process = mockSpawn();
@@ -167,7 +167,7 @@ describe('PreviewService', () => {
       }));
 
       const { spawn } = await import('child_process');
-      vi.mocked(spawn).mockImplementation(mockSpawn);
+      vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
       await expect(
         previewService.generateVideoPreview(
@@ -213,7 +213,7 @@ describe('PreviewService', () => {
       }));
 
       const { spawn } = await import('child_process');
-      vi.mocked(spawn).mockImplementation(mockSpawn);
+      vi.mocked(spawn).mockImplementation(mockSpawn as any);
 
       const previewPromise = previewService.generateVideoPreview(
         '/test/input.mp4',
