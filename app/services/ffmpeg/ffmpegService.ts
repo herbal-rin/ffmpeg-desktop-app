@@ -450,13 +450,6 @@ export class FfmpegService extends EventEmitter {
     const inputName = path.basename(opts.input, path.extname(opts.input));
     const outputName = opts.outputName || inputName;
     
-    this.logger.info('构建输出路径', {
-      input: opts.input,
-      inputName,
-      providedOutputName: opts.outputName,
-      finalOutputName: outputName
-    });
-    
     // 根据编码器添加后缀
     let suffix = '';
     if (opts.videoCodec === 'libx264' || opts.videoCodec === 'h264_nvenc' || opts.videoCodec === 'h264_qsv' || opts.videoCodec === 'h264_videotoolbox') {
@@ -467,8 +460,6 @@ export class FfmpegService extends EventEmitter {
     
     const extension = opts.container === 'mp4' ? '.mp4' : '.mkv';
     const finalPath = path.join(opts.outputDir, `${outputName}${suffix}${extension}`);
-    
-    this.logger.info('最终输出路径', { finalPath });
     
     return finalPath;
   }

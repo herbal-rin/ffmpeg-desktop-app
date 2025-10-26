@@ -74,6 +74,11 @@ export function CompressPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [outputDir, setOutputDir] = useState<string>('');
   const [outputFileName, setOutputFileName] = useState<string>(''); // 新增输出文件名
+  const outputFileNameRef = React.useRef(outputFileName); // 用于在异步回调中访问最新值
+  
+  React.useEffect(() => {
+    outputFileNameRef.current = outputFileName;
+  }, [outputFileName]);
   const [container, setContainer] = useState<Container>('mp4');
   const [videoCodec, setVideoCodec] = useState<VideoCodec | 'auto'>('auto');
   const [preset, setPreset] = useState<string>('balanced');
@@ -108,22 +113,8 @@ export function CompressPage() {
     }
   }, [defaultOutputDir, outputDir]);
 
-  // 自动设置输出文件名（单文件时）
-  React.useEffect(() => {
-    if (files.length === 1) {
-      // 自动使用输入文件名作为默认值
-      const fileName = files[0].file.name;
-      const baseName = getBasename(fileName);
-      
-      // 只有当前为空时才设置
-      if (!outputFileName) {
-        setOutputFileName(baseName);
-      }
-    } else if (files.length !== 1) {
-      // 多文件或没有文件时清空
-      setOutputFileName('');
-    }
-  }, [files.length]); // eslint-disable-line react-hooks/exhaustive-deps
+  // 不使用 useEffect 自动设置，避免覆盖用户输入
+  // 输出文件名将由用户在输入框中手动输入，或使用默认的输入文件名
 
   // 检查是否有文件正在传输
   const hasTransferringFiles = files.some(f => f.isTransferring === true);
@@ -258,6 +249,18 @@ export function CompressPage() {
       }
     }
     
+    // 使用 ref 访问最新的 outputFileName，避免闭包问题
+    const currentOutputFileName = outputFileNameRef.current;
+    
+    // 如果只有一个文件且输出文件名为空，设置默认值
+    if (selectedFiles.length === 1 && !currentOutputFileName) {
+      const baseName = getBasename(selectedFiles[0].name);
+      setOutputFileName(baseName);
+    } else if (selectedFiles.length !== 1 && currentOutputFileName) {
+      // 多文件时清空
+      setOutputFileName('');
+    }
+    
     console.log('📊 文件添加完成');
   }, []);
 
@@ -336,10 +339,14 @@ export function CompressPage() {
         
         // 确定输出文件名：使用自定义名称或输入文件名
         let finalOutputName: string | undefined;
-        if (files.length === 1 && outputFileName.trim()) {
+        
+        // 使用 ref 获取最新的 outputFileName 值，避免闭包问题
+        const currentOutputFileName = outputFileNameRef.current;
+        
+        if (files.length === 1 && currentOutputFileName.trim()) {
           // 单文件且有自定义名称
-          finalOutputName = outputFileName.trim();
-        } else if (files.length === 1 && !outputFileName.trim()) {
+          finalOutputName = currentOutputFileName.trim();
+        } else if (files.length === 1 && !currentOutputFileName.trim()) {
           // 单文件但无自定义名称，使用输入文件名
           finalOutputName = getBasename(fileInfo.file.name);
         }
@@ -358,14 +365,6 @@ export function CompressPage() {
           audio,
           fastStart: container === 'mp4'
         };
-
-        console.log('📤 添加任务', {
-          inputFile: fileInfo.file.name,
-          finalOutputName,
-          outputDir,
-          container,
-          videoCodec: actualCodec
-        });
 
         await addJob(options);
       }
