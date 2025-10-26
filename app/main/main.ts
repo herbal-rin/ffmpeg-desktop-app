@@ -224,22 +224,9 @@ app.whenReady().then(() => {
     // 设置工具 IPC（即使 FFmpeg 未配置也设置，允许进入设置页）
     setupToolsIPC();
     
-    // 初始化设置 IPC（延迟到窗口创建后）
-    let settingsIPC: SettingsIPC | null = null;
-    
-    // 窗口创建后更新webContents引用
-    function initSettingsIPC() {
-      if (mainWindow && !mainWindow.isDestroyed() && !settingsIPC) {
-        settingsIPC = new SettingsIPC(logger, configService, mainWindow.webContents);
-        logger.info('设置IPC已初始化（带webContents）');
-      }
-    }
-    
-    // 立即尝试初始化（窗口可能已创建）
-    initSettingsIPC();
-    
-    // 监听窗口事件
-    app.once('browser-window-created', initSettingsIPC);
+    // 初始化设置 IPC（立即初始化，webContents 稍后更新）
+    const settingsIPC = new SettingsIPC(logger, configService);
+    logger.info('设置IPC已初始化');
     
     logger.info('所有服务初始化成功');
   } catch (error) {
