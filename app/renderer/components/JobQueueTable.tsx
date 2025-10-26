@@ -168,8 +168,8 @@ export function JobQueueTable() {
               </div>
               <div className="w-full bg-gray-200 dark:bg-gray-700 rounded-full h-2">
                 <div
-                  className="bg-primary h-2 rounded-full transition-all duration-300"
-                  style={{ width: `${job.lastProgress.ratio * 100}%` }}
+                  className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                  style={{ width: `${(Number(job.lastProgress.ratio) * 100).toFixed(1)}%` }}
                 />
               </div>
             </div>
