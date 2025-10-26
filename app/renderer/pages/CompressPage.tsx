@@ -269,6 +269,9 @@ export function CompressPage() {
     }
   }, []);
 
+  // 检查是否有文件正在传输
+  const hasTransferringFiles = files.some(f => f.isTransferring === true);
+
   // 开始压缩
   const handleStartCompression = useCallback(async () => {
     if (files.length === 0) {
@@ -278,6 +281,12 @@ export function CompressPage() {
 
     if (!outputDir) {
       (window as any).showToast?.(t('compress.selectOutputDir'), 'warning');
+      return;
+    }
+
+    // 检查是否有文件正在传输
+    if (hasTransferringFiles) {
+      (window as any).showToast?.('请等待文件传输完成', 'warning');
       return;
     }
 
@@ -317,7 +326,7 @@ export function CompressPage() {
       console.error('开始压缩失败:', error);
       (window as any).showToast?.(error instanceof Error ? error.message : t('error.unknown'), 'error');
     }
-  }, [files, outputDir, container, videoCodec, preset, audio, addJob, startQueue]);
+  }, [files, outputDir, container, videoCodec, preset, audio, addJob, startQueue, hasTransferringFiles]);
 
   // 清空已选择的文件列表
   const handleClearFiles = useCallback(async () => {
@@ -633,11 +642,11 @@ export function CompressPage() {
                   <div className="flex space-x-2">
                     <button
                       onClick={handleStartCompression}
-                      disabled={isProcessing || files.length === 0}
+                      disabled={isProcessing || files.length === 0 || hasTransferringFiles}
                       className="px-6 py-3 bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white font-semibold rounded-lg shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none disabled:hover:shadow-lg flex items-center space-x-2"
                     >
                       <span className="text-lg">🚀</span>
-                      <span>{t('compress.startQueue')}</span>
+                      <span>{hasTransferringFiles ? '文件传输中...' : t('compress.startQueue')}</span>
                     </button>
                     <button
                       onClick={handleClearQueue}
