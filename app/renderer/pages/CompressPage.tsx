@@ -359,6 +359,14 @@ export function CompressPage() {
           fastStart: container === 'mp4'
         };
 
+        console.log('📤 添加任务', {
+          inputFile: fileInfo.file.name,
+          finalOutputName,
+          outputDir,
+          container,
+          videoCodec: actualCodec
+        });
+
         await addJob(options);
       }
 
