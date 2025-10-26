@@ -37,11 +37,6 @@ export class ArgsBuilder {
       args.push('-b:a', `${audio.bitrateK}k`);
     }
     
-    // 容器格式特定参数
-    if (container === 'mp4' && fastStart) {
-      args.push('-movflags', '+faststart');
-    }
-    
     return args;
   }
 
@@ -87,6 +82,11 @@ export class ArgsBuilder {
       } else {
         throw new Error(`字幕路径无效: ${subtitleValidation.reason}`);
       }
+    }
+
+    // 容器格式特定参数（必须在输出文件之前）
+    if (container === 'mp4' && fastStart) {
+      args.push('-movflags', '+faststart');
     }
 
     args.push(
