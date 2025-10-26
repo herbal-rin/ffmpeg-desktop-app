@@ -88,6 +88,20 @@ function initializeServices(): void {
 }
 
 /**
+ * 重新初始化服务（在设置FFmpeg路径后调用）
+ */
+function reinitializeServices(): boolean {
+  try {
+    logger?.info('尝试重新初始化服务');
+    initializeServices();
+    return ffmpegService !== null && jobQueue !== null;
+  } catch (error) {
+    logger?.error('重新初始化服务失败', { error: error instanceof Error ? error.message : String(error) });
+    return false;
+  }
+}
+
+/**
  * 验证转码选项
  */
 function validateTranscodeOptions(options: TranscodeOptions): void {
@@ -144,8 +158,13 @@ export function setupIPC(): void {
    */
   ipcMain.handle('ffmpeg/probe', async (_event, { input }: { input: string }) => {
     try {
+      // 如果服务未初始化，尝试重新初始化
       if (!ffmpegService) {
-        throw new Error('FFmpeg 服务未初始化');
+        logger?.warn('FFmpeg服务未初始化，尝试重新初始化');
+        const reinitSuccess = reinitializeServices();
+        if (!reinitSuccess || !ffmpegService) {
+          throw new Error('FFmpeg 服务未配置，请在设置页配置 FFmpeg 路径');
+        }
       }
       
       const result = await ffmpegService.probe(input);
@@ -164,8 +183,13 @@ export function setupIPC(): void {
    */
   ipcMain.handle('ffmpeg/queue/enqueue', async (_event, options: TranscodeOptions) => {
     try {
+      // 如果服务未初始化，尝试重新初始化
       if (!jobQueue) {
-        throw new Error('任务队列未初始化');
+        logger?.warn('任务队列未初始化，尝试重新初始化');
+        const reinitSuccess = reinitializeServices();
+        if (!reinitSuccess || !jobQueue) {
+          throw new Error('任务队列未配置，请在设置页配置 FFmpeg 路径');
+        }
       }
       
       // 验证参数

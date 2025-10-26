@@ -156,7 +156,8 @@ export class GPUDetector {
     
     for (const line of lines) {
       const trimmed = line.trim();
-      if (trimmed && trimmed.includes('_nvenc') || trimmed.includes('_qsv') || trimmed.includes('_videotoolbox')) {
+      // 修复优先级：添加括号确保 trimmed 在检查包含之前先存在且非空
+      if (trimmed && (trimmed.includes('_nvenc') || trimmed.includes('_qsv') || trimmed.includes('_videotoolbox'))) {
         const parts = trimmed.split(/\s+/);
         if (parts.length > 1 && parts[1]) {
           encoders.push(parts[1]);
