@@ -7,7 +7,8 @@ import { JobStatus } from '../../shared/types';
  */
 export function JobQueueTable() {
   const { 
-    jobs, 
+    jobs,
+    currentJob,
     isProcessing, 
     cancelJob, 
     pauseJob, 
@@ -109,36 +110,16 @@ export function JobQueueTable() {
 
   return (
     <div className="space-y-4">
-      {/* 队列标题和快捷操作 */}
-      <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold">{t('queue.title')}</h3>
-        <div className="flex items-center space-x-2">
-          <div className="text-sm text-gray-500 dark:text-gray-400">
-            {t('queue.processing')}: {isProcessing ? t('common.yes') : t('common.no')}
-          </div>
-          {/* 快捷操作按钮 */}
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={() => window.api.invoke('ffmpeg/queue/start')}
-              disabled={isProcessing || jobs.length === 0}
-              className="btn btn-sm btn-primary"
-            >
-              ▶️ {t('queue.start')}
-            </button>
-            <button
-              onClick={() => {
-                const completedJob = jobs.find(j => j.status === 'completed');
-                if (completedJob?.opts?.outputDir) {
-                  window.api.invoke('system/openDirectory', completedJob.opts.outputDir);
-                }
-              }}
-              disabled={!jobs.some(j => j.status === 'completed')}
-              className="btn btn-sm btn-outline"
-            >
-              📁 {t('queue.openOutputDir')}
-            </button>
-          </div>
+      {/* 队列状态信息 */}
+      <div className="flex items-center justify-between text-sm">
+        <div className="text-gray-500 dark:text-gray-400">
+          {t('queue.processing')}: {isProcessing ? t('common.yes') : t('common.no')}
         </div>
+        {isProcessing && currentJob && (
+          <div className="text-sm text-gray-500 dark:text-gray-400">
+            {t('queue.current')}: {currentJob.id.slice(-6)}
+          </div>
+        )}
       </div>
 
       {/* 任务列表 */}
