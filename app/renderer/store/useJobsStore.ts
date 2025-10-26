@@ -233,7 +233,16 @@ export const useJobsStore = create<JobsState>((set, get) => ({
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, status: 'completed' as const, finishedAt: Date.now() }
+                ? { 
+                    ...j, 
+                    status: 'completed' as const, 
+                    finishedAt: Date.now(),
+                    // 确保完成时显示100%
+                    lastProgress: j.lastProgress ? {
+                      ...j.lastProgress,
+                      ratio: 1.0
+                    } : undefined
+                  }
                 : j
             ),
             currentJob: null,
