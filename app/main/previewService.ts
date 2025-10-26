@@ -11,7 +11,7 @@ import * as os from 'os';
 import * as crypto from 'crypto';
 import { Logger, FfmpegPaths } from '../shared/types';
 import { ProgressParser } from '../services/ffmpeg/progressParser';
-import { PathEscapeUtils } from '../services/ffmpeg/pathEscapeUtils';
+// 路径转义工具仅在需要时引入（如滤镜字符串）
 import { killProcessTree } from './windowsKillTree';
 
 export class PreviewService extends EventEmitter {
@@ -107,10 +107,10 @@ export class PreviewService extends EventEmitter {
     const outputPath = path.join(this.tempDir, `${crypto.randomUUID()}.mp4`);
     const tempPath = `${outputPath}.tmp`;
 
-    const args = [
-      '-y',
-      '-ss', range.startSec.toString(),
-      '-i', PathEscapeUtils.escapeInputPath(input),
+        const args = [
+          '-y',
+          '-ss', range.startSec.toString(),
+          '-i', input,
       '-t', duration.toString(),
       '-c:v', 'libx264',
       '-preset', 'ultrafast',

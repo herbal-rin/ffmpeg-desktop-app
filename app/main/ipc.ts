@@ -378,7 +378,7 @@ export function setupIPC(): void {
       const paths = configService.getPaths();
       
       // 执行1秒快速自测
-      return new Promise<{ available: boolean; error?: string }>((resolve, reject) => {
+      return new Promise<{ available: boolean; error?: string }>((resolve) => {
         const process = spawn(paths.ffmpeg, [
           '-hide_banner',
           '-y',

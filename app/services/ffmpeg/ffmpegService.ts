@@ -1,4 +1,5 @@
 import { spawn, ChildProcess } from 'child_process';
+import { EventEmitter } from 'events';
 import * as fs from 'fs';
 import * as path from 'path';
 import { 
@@ -16,7 +17,7 @@ import { HardwareAccelBlacklist } from './hardwareAccelBlacklist';
 /**
  * FFmpeg 服务类
  */
-export class FfmpegService {
+export class FfmpegService extends EventEmitter {
   private activeProcesses = new Map<number, ChildProcess>();
   private ffprobeService: FFprobeService;
   private blacklist: HardwareAccelBlacklist;
@@ -25,6 +26,7 @@ export class FfmpegService {
     private paths: FfmpegPaths,
     private logger: Logger
   ) {
+    super(); // EventEmitter constructor
     this.ffprobeService = new FFprobeService(paths, logger);
     this.blacklist = HardwareAccelBlacklist.getInstance();
     
@@ -89,21 +91,25 @@ export class FfmpegService {
 
       // 执行 FFmpeg
       const process = this.spawnProcess(this.paths.ffmpeg, args);
-      this.activeProcesses.set(process.pid!, process);
-
-      // 立即返回PID，不等待完成
       const pid = process.pid!;
+      this.activeProcesses.set(pid, process);
       
-      // 异步处理完成逻辑
-      this.handleTranscodeCompletion(process, job, tempOutputPath, finalOutputPath, totalDurationMs, onProgress)
-        .catch((error) => {
-          this.logger.error('转码任务处理失败', {
-            jobId: job.id,
-            error: error instanceof Error ? error.message : String(error)
-          });
-        });
+      this.logger.info('FFmpeg进程已启动', { jobId: job.id, pid });
 
-      return pid;
+      // 立即发出PID事件
+      this.emit('job-pid', { jobId: job.id, pid });
+
+      // 等待完成后再返回（包含重命名和重命名后的错误处理）
+      try {
+        await this.handleTranscodeCompletion(process, job, tempOutputPath, finalOutputPath, totalDurationMs, onProgress);
+        return pid;
+      } catch (error) {
+        // 错误已在handleTranscodeCompletion中处理
+        throw error;
+      } finally {
+        // 清理进程记录
+        this.activeProcesses.delete(pid);
+      }
 
     } catch (error) {
       this.logger.error('转码任务失败', {
@@ -161,11 +167,6 @@ export class FfmpegService {
       this.cleanupTempFile(tempOutputPath, job.id);
       
       throw error;
-    } finally {
-      // 清理进程记录
-      if (process.pid) {
-        this.activeProcesses.delete(process.pid);
-      }
     }
   }
 

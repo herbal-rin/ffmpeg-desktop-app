@@ -9,7 +9,7 @@ import * as path from 'path';
 import * as crypto from 'crypto';
 import { Logger, FfmpegPaths } from '../shared/types';
 import { PreviewService } from './previewService';
-import { PathEscapeUtils } from '../services/ffmpeg/pathEscapeUtils';
+// 路径转义工具仅在需要时引入（如滤镜字符串）
 import { ArgsBuilder } from '../services/ffmpeg/argsBuilder';
 import { FFprobeService } from '../services/ffmpeg/probe';
 import { MuxingValidator } from '../services/ffmpeg/muxingValidator';
@@ -174,7 +174,7 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     '-y',
     '-ss', request.range.startSec.toString(),
     '-accurate_seek',
-    '-i', PathEscapeUtils.escapeInputPath(request.input),
+    '-i', request.input,
     '-to', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
     '-force_key_frames', 'expr:gte(t,0)',
@@ -490,9 +490,9 @@ export function setupToolsIPC() {
             '-y',
             '-ss', request.range.startSec.toString(),
             '-to', request.range.endSec.toString(),
-            '-i', PathEscapeUtils.escapeInputPath(request.input),
+            '-i', request.input,
             '-vf', `fps=${request.fps},scale='min(${request.maxWidth || 640},iw)':-1:flags=lanczos,palettegen=max_colors=128`,
-            PathEscapeUtils.escapeOutputPath(palettePath)
+            palettePath
           ];
 
           logger!.info('生成调色板', { args: paletteArgs });
@@ -521,11 +521,11 @@ export function setupToolsIPC() {
             '-y',
             '-ss', request.range.startSec.toString(),
             '-to', request.range.endSec.toString(),
-            '-i', PathEscapeUtils.escapeInputPath(request.input),
-            '-i', PathEscapeUtils.escapeInputPath(palettePath),
+            '-i', request.input,
+            '-i', palettePath,
             '-lavfi', `fps=${request.fps},scale='min(${request.maxWidth || 640},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${request.dithering || 'bayer'}:bayer_scale=5`,
             '-loop', '0', // 无限循环
-            PathEscapeUtils.escapeOutputPath(tempPath)
+            tempPath
           ];
 
           logger!.info('生成 GIF', { args: gifArgs });
@@ -660,7 +660,7 @@ export function setupToolsIPC() {
         args.push('-to', request.range.endSec.toString());
       }
 
-      args.push('-i', PathEscapeUtils.escapeInputPath(request.input));
+      args.push('-i', request.input);
       
       // 音轨选择：默认 a:0，支持指定音轨
       args.push('-map', `0:a:${audioTrack}`);

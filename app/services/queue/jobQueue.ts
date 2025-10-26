@@ -300,14 +300,24 @@ export class JobQueue extends EventEmitter {
         this.emit('job-progress', { job, progress });
       };
 
-      // 执行转码
+      // 监听PID事件
+      let pidReceived = false;
+      const onPid = (data: { jobId: string; pid: number }) => {
+        if (data.jobId === job.id && !pidReceived) {
+          pidReceived = true;
+          this.activePid = data.pid;
+          this.logger.info('任务已启动', { jobId: job.id, pid: data.pid });
+        }
+      };
+      
+      this.ffmpegService.on('job-pid', onPid);
+
+      // 执行转码（会阻塞直到完成）
       this.ffmpegService.transcode(job, onProgress)
-        .then((pid) => {
-          // 保存进程PID
-          this.activePid = pid;
-          this.logger.info('任务已启动', { jobId: job.id, pid });
+        .then((_pid) => {
+          this.ffmpegService.removeListener('job-pid', onPid);
           
-          // 直接完成，不需要轮询等待
+          // 任务完成
           job.status = 'completed';
           job.finishedAt = Date.now();
           this.logger.info('任务执行完成', {
@@ -319,6 +329,7 @@ export class JobQueue extends EventEmitter {
           resolve();
         })
         .catch((error) => {
+          this.ffmpegService.removeListener('job-pid', onPid);
           this.activePid = null; // 清理PID
           job.status = 'failed';
           job.finishedAt = Date.now();
