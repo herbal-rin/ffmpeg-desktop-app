@@ -9,6 +9,21 @@ import { useSettingsStore } from '../store/useSettingsStore';
 import { t, formatFileSize, formatDuration } from '../i18n';
 import { TranscodeOptions, AudioPolicy, Container, VideoCodec, ProbeResult, PresetName, VideoPreset } from '../../shared/types';
 
+// 简单的文件路径工具函数（用于浏览器环境）
+function getBasename(filePath: string, ext?: string): string {
+  const name = filePath.split(/[/\\]/).pop() || '';
+  if (ext) {
+    return name.endsWith(ext) ? name.slice(0, -ext.length) : name;
+  }
+  return name.split('.').slice(0, -1).join('.') || name;
+}
+
+function getExtname(filePath: string): string {
+  const name = filePath.split(/[/\\]/).pop() || '';
+  const index = name.lastIndexOf('.');
+  return index > 0 ? name.slice(index) : '';
+}
+
 /**
  * 文件信息接口
  */
@@ -19,6 +34,7 @@ interface FileInfo {
   tempPath?: string; // 临时文件路径
   transferProgress?: number; // 传输进度 0-100
   isTransferring?: boolean; // 是否正在传输
+  customOutputName?: string; // 自定义输出文件名（不含扩展名）
 }
 
 /**
@@ -91,6 +107,26 @@ export function CompressPage() {
       setOutputDir(defaultOutputDir);
     }
   }, [defaultOutputDir, outputDir]);
+
+  // 自动设置输出文件名（单文件时）
+  React.useEffect(() => {
+    if (files.length === 1) {
+      // 自动使用输入文件名作为默认值
+      const fileName = files[0].file.name;
+      const baseName = getBasename(fileName);
+      
+      // 只有当前为空时才设置
+      if (!outputFileName) {
+        setOutputFileName(baseName);
+      }
+    } else if (files.length !== 1) {
+      // 多文件或没有文件时清空
+      setOutputFileName('');
+    }
+  }, [files.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // 检查是否有文件正在传输
+  const hasTransferringFiles = files.some(f => f.isTransferring === true);
 
   // 处理文件选择
   const handleFilesSelected = useCallback(async (selectedFiles: File[]) => {
@@ -269,9 +305,6 @@ export function CompressPage() {
     }
   }, []);
 
-  // 检查是否有文件正在传输
-  const hasTransferringFiles = files.some(f => f.isTransferring === true);
-
   // 开始压缩
   const handleStartCompression = useCallback(async () => {
     if (files.length === 0) {
@@ -301,10 +334,21 @@ export function CompressPage() {
         const actualCodec = videoCodec === 'auto' ? 'libx264' : videoCodec;
         const presetArgs = getPresetArgs(preset, actualCodec);
         
+        // 确定输出文件名：使用自定义名称或输入文件名
+        let finalOutputName: string | undefined;
+        if (files.length === 1 && outputFileName.trim()) {
+          // 单文件且有自定义名称
+          finalOutputName = outputFileName.trim();
+        } else if (files.length === 1 && !outputFileName.trim()) {
+          // 单文件但无自定义名称，使用输入文件名
+          finalOutputName = getBasename(fileInfo.file.name);
+        }
+        // 多文件时使用默认（在每个文件的基础名上）
+        
         const options: TranscodeOptions = {
           input: fileInfo.tempPath, // 使用临时路径
           outputDir,
-          outputName: outputFileName || undefined, // 添加输出文件名
+          outputName: finalOutputName, // 使用确定后的输出文件名
           container,
           videoCodec: actualCodec,
           videoPreset: {
@@ -615,18 +659,40 @@ export function CompressPage() {
                         {t('compress.selectOutputDir')}
                       </button>
                     </div>
-                    {/* 输出文件名 */}
-                    <div>
-                      <label className="label text-xs">输出文件名 (可选)</label>
-                      <input
-                        type="text"
-                        value={outputFileName}
-                        onChange={(e) => setOutputFileName(e.target.value)}
-                        placeholder="留空则自动使用输入文件名"
-                        disabled={isProcessing}
-                        className="input"
-                      />
-                    </div>
+                    {/* 输出文件名 - 仅单文件时显示 */}
+                    {files.length === 1 && (
+                      <div>
+                        <label className="label text-sm mb-2 flex items-center gap-2">
+                          输出文件名
+                          <span className="text-xs text-gray-500 dark:text-gray-400">(不含扩展名)</span>
+                        </label>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="text"
+                            value={outputFileName}
+                            onChange={(e) => setOutputFileName(e.target.value)}
+                            placeholder={files[0] ? getBasename(files[0].file.name) : '自动使用原文件名'}
+                            disabled={isProcessing || hasTransferringFiles}
+                            className="input flex-1"
+                          />
+                          <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
+                            _{videoCodec.includes('h264') ? 'X264' : 'X265'}.{container}
+                          </div>
+                        </div>
+                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+                          留空将使用输入文件名，将自动添加编码器后缀
+                        </p>
+                      </div>
+                    )}
+                    
+                    {/* 多文件提示 */}
+                    {files.length > 1 && (
+                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+                        <p className="text-sm text-blue-600 dark:text-blue-400">
+                          ℹ️ 多文件模式：每个文件将使用原文件名 + 编码器后缀
+                        </p>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
