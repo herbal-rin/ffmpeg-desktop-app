@@ -329,7 +329,7 @@ export function setupIPC(): void {
   /**
    * 检测硬件加速支持
    */
-  ipcMain.handle('gpu/detect', async (_event, {}) => {
+  ipcMain.handle('gpu/detect', async (_event) => {
     try {
       const { spawn } = await import('child_process');
       const paths = configService.getPaths();
