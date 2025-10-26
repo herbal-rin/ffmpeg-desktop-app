@@ -39,12 +39,20 @@ function createMainWindow(): void {
   // 检查是否为开发模式
   const isDevelopment = process.env.NODE_ENV === 'development';
   
+  console.log(`[调试信息] NODE_ENV=${process.env.NODE_ENV}, isDevelopment=${isDevelopment}`);
+  
   if (isDevelopment) {
     // 开发模式：从环境变量获取 Vite 端口，默认 5173
     const vitePort = process.env.VITE_PORT || '5173';
-    console.log(`[开发模式] 加载 Vite 服务器: http://localhost:${vitePort}`);
-    mainWindow.loadURL(`http://localhost:${vitePort}`);
+    const url = `http://localhost:${vitePort}`;
+    console.log(`[开发模式] 加载 Vite 服务器: ${url}`);
+    mainWindow.loadURL(url);
     mainWindow.webContents.openDevTools();
+    
+    // 添加错误监听
+    mainWindow.webContents.on('did-fail-load', (_event, errorCode, errorDescription) => {
+      console.error('[窗口加载失败]', errorCode, errorDescription);
+    });
   } else {
     // 生产模式：加载打包后的文件
     console.log('[生产模式] 加载静态文件');
