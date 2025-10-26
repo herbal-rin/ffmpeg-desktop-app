@@ -31,6 +31,7 @@ interface JobsState {
   pauseJob: (jobId: string) => Promise<void>;
   resumeJob: (jobId: string) => Promise<void>;
   removeJob: (jobId: string) => void;
+  clearQueue: () => Promise<void>;
   detectGPU: () => Promise<void>;
   clearError: () => void;
   
@@ -163,6 +164,25 @@ export const useJobsStore = create<JobsState>((set, get) => ({
       jobs: state.jobs.filter(job => job.id !== jobId),
       queueLength: state.jobs.filter(job => job.id !== jobId).length,
     }));
+  },
+
+  // 清空任务队列
+  clearQueue: async () => {
+    try {
+      await window.api.invoke('ffmpeg/queue/clear');
+      set({
+        jobs: [],
+        currentJob: null,
+        isProcessing: false,
+        queueLength: 0,
+      });
+    } catch (error) {
+      console.error('清空队列失败:', error);
+      set({
+        error: error instanceof Error ? error.message : '清空队列失败',
+      });
+      throw error;
+    }
   },
 
   // 检测 GPU

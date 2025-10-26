@@ -322,6 +322,27 @@ export function setupIPC(): void {
     }
   });
 
+  /**
+   * 清空任务队列
+   */
+  ipcMain.handle('ffmpeg/queue/clear', async (_event) => {
+    try {
+      if (!jobQueue) {
+        throw new Error('任务队列未初始化');
+      }
+      
+      jobQueue.clear();
+      logger?.info('任务队列已清空');
+      
+      return { ok: true };
+    } catch (error) {
+      logger?.error('清空队列失败', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      throw error;
+    }
+  });
+
   // 注意：设置相关IPC已移至SettingsIPC类处理
 
   // GPU 检测相关 IPC

@@ -69,7 +69,8 @@ export function CompressPage() {
     isProcessing, 
     gpuInfo, 
     addJob, 
-    startQueue, 
+    startQueue,
+    clearQueue: clearCompressionQueue,
     detectGPU
   } = useJobsStore();
   
@@ -95,21 +96,17 @@ export function CompressPage() {
   const handleFilesSelected = useCallback(async (selectedFiles: File[]) => {
     console.log('📁 收到文件:', selectedFiles.length, '个文件');
     
-    const newFiles: FileInfo[] = [];
-    
     for (const file of selectedFiles) {
       console.log('📄 处理文件:', file.name, '类型:', file.type, '大小:', formatFileSize(file.size));
       
-      const fileInfo: FileInfo = { file };
+      const fileInfo: FileInfo = { 
+        file,
+        isTransferring: true,
+        transferProgress: 0
+      };
       
-      // 标记为正在传输
-      fileInfo.isTransferring = true;
-      fileInfo.transferProgress = 0;
-      setFiles((prev) => {
-        const updated = [...prev];
-        updated[prev.length] = fileInfo;
-        return updated;
-      });
+      // 先添加到列表显示进度
+      setFiles(prev => [...prev, fileInfo]);
       
       try {
         // 将文件保存到临时目录
@@ -149,12 +146,17 @@ export function CompressPage() {
           
           // 更新传输进度
           const progress = Math.round((end / uint8Array.length) * 100);
-          fileInfo.transferProgress = progress;
           setFiles((prev) => {
             const updated = [...prev];
-            const index = updated.findIndex(f => f.file.name === file.name);
+            const index = updated.findIndex(f => 
+              f.file.name === file.name && f.file.size === file.size
+            );
             if (index >= 0) {
-              updated[index] = { ...updated[index], transferProgress: progress };
+              updated[index] = { 
+                ...updated[index], 
+                transferProgress: progress,
+                isTransferring: end < uint8Array.length
+              };
             }
             return updated;
           });
@@ -162,26 +164,36 @@ export function CompressPage() {
           console.log(`📦 传输进度: ${end}/${uint8Array.length} (${progress}%)`);
         }
         
-        // 传输完成
-        fileInfo.isTransferring = false;
-        const result = { tempPath };
-        
-        console.log('✅ 临时文件已保存:', result.tempPath);
+        console.log('✅ 临时文件已保存:', tempPath);
         
         // 使用临时路径进行探测
         console.log('🔍 开始探测文件信息...');
         const probeResult = await window.api.invoke('ffmpeg/probe', {
-          input: result.tempPath
+          input: tempPath
         });
         
         console.log('✅ 探测完成:', probeResult);
         
-        fileInfo.probeResult = probeResult;
-        fileInfo.tempPath = result.tempPath;
+        // 更新文件信息（包括probeResult和tempPath）
+        setFiles((prev) => {
+          const updated = [...prev];
+          const index = updated.findIndex(f => 
+            f.file.name === file.name && f.file.size === file.size
+          );
+          if (index >= 0) {
+            updated[index] = { 
+              ...updated[index],
+              probeResult,
+              tempPath,
+              isTransferring: false,
+              transferProgress: 100
+            };
+          }
+          return updated;
+        });
         
         console.log('文件探测完成:', file.name, formatFileSize(file.size));
       } catch (error) {
-        fileInfo.error = error instanceof Error ? error.message : '探测失败';
         console.error('❌ 文件探测失败:', file.name, error);
         
         // 显示详细错误信息给用户
@@ -191,13 +203,26 @@ export function CompressPage() {
             console.error('错误堆栈:', error.stack);
           }
         }
+        
+        // 更新错误信息
+        setFiles((prev) => {
+          const updated = [...prev];
+          const index = updated.findIndex(f => 
+            f.file.name === file.name && f.file.size === file.size
+          );
+          if (index >= 0) {
+            updated[index] = { 
+              ...updated[index],
+              error: error instanceof Error ? error.message : '探测失败',
+              isTransferring: false
+            };
+          }
+          return updated;
+        });
       }
-      
-      newFiles.push(fileInfo);
     }
     
-    console.log('📊 准备添加', newFiles.length, '个文件到列表');
-    setFiles(prev => [...prev, ...newFiles]);
+    console.log('📊 文件添加完成');
   }, []);
 
   // 移除文件
@@ -294,10 +319,33 @@ export function CompressPage() {
     }
   }, [files, outputDir, container, videoCodec, preset, audio, addJob, startQueue]);
 
-  // 清空队列
-  const handleClearQueue = useCallback(() => {
+  // 清空已选择的文件列表
+  const handleClearFiles = useCallback(async () => {
+    // 清理所有临时文件
+    for (const fileInfo of files) {
+      if (fileInfo.tempPath) {
+        try {
+          await window.api.invoke('file/cleanup-temp', {
+            tempPath: fileInfo.tempPath
+          });
+        } catch (error) {
+          console.warn('清理临时文件失败:', error);
+        }
+      }
+    }
     setFiles([]);
-  }, []);
+  }, [files]);
+  
+  // 清空压缩任务队列
+  const handleClearQueue = useCallback(async () => {
+    try {
+      await clearCompressionQueue();
+      (window as any).showToast?.('任务队列已清空', 'success');
+    } catch (error) {
+      console.error('清空队列失败:', error);
+      (window as any).showToast?.('清空队列失败', 'error');
+    }
+  }, [clearCompressionQueue]);
 
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -329,9 +377,18 @@ export function CompressPage() {
                 {/* 已选择的文件列表 */}
                 {files.length > 0 && (
                   <div className="mt-6 space-y-2">
-                    <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
-                      已选择文件 ({files.length})
-                    </h3>
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300">
+                        已选择文件 ({files.length})
+                      </h3>
+                      <button
+                        onClick={handleClearFiles}
+                        disabled={isProcessing}
+                        className="text-xs text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+                      >
+                        清空
+                      </button>
+                    </div>
                     {files.map((fileInfo, index) => (
                       <div
                         key={index}
