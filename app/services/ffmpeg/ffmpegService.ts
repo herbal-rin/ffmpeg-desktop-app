@@ -83,10 +83,10 @@ export class FfmpegService extends EventEmitter {
         opts.extraArgs
       );
 
-      this.logger.debug('FFmpeg 命令参数', {
+      this.logger.info('FFmpeg 命令', {
         jobId: job.id,
         command: this.paths.ffmpeg,
-        args
+        args: args.join(' ')
       });
 
       // 执行 FFmpeg
