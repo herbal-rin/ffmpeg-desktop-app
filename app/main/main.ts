@@ -8,9 +8,6 @@ import { FFprobeService } from '../services/ffmpeg/probe';
 import { ConsoleLogger } from '../services/logger';
 import { configService } from '../services/config';
 
-// 开发环境检测
-const isDev = process.env.NODE_ENV === 'development';
-
 // 主窗口
 let mainWindow: BrowserWindow | null = null;
 
@@ -64,7 +61,7 @@ function createMainWindow(): void {
     mainWindow?.show();
     
     // 开发环境下聚焦到窗口
-    if (isDev) {
+    if (isDevelopment) {
       mainWindow?.focus();
     }
   });
