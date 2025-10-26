@@ -369,6 +369,69 @@ export function setupIPC(): void {
     }
   });
 
+  /**
+   * GPU 自测
+   */
+  ipcMain.handle('gpu/selfTest', async (_event, { encoder }: { encoder: string }) => {
+    try {
+      const { spawn } = await import('child_process');
+      const paths = configService.getPaths();
+      
+      // 执行1秒快速自测
+      return new Promise<{ available: boolean; error?: string }>((resolve, reject) => {
+        const process = spawn(paths.ffmpeg, [
+          '-hide_banner',
+          '-y',
+          '-f', 'lavfi',
+          '-i', 'testsrc=size=128x72:rate=30',
+          '-t', '1',
+          '-c:v', encoder,
+          '-f', 'null',
+          '-'
+        ], { stdio: 'pipe' });
+        
+        let stderr = '';
+        process.stderr.on('data', (data) => {
+          stderr += data.toString();
+        });
+        
+        process.on('close', (code) => {
+          if (code === 0) {
+            resolve({ available: true });
+          } else {
+            // 返回前40行错误信息用于显示
+            const errorLines = stderr.split('\n').slice(0, 40).join('\n');
+            resolve({ 
+              available: false, 
+              error: errorLines || `编码器测试失败，退出码: ${code}` 
+            });
+          }
+        });
+        
+        process.on('error', (error) => {
+          resolve({ 
+            available: false, 
+            error: error.message 
+          });
+        });
+        
+        // 3秒超时
+        setTimeout(() => {
+          process.kill();
+          resolve({ 
+            available: false, 
+            error: '测试超时' 
+          });
+        }, 3000);
+      });
+    } catch (error) {
+      logger?.error('GPU 自测失败', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      return { available: false, error: '自测启动失败' };
+    }
+  });
+
   // 文件对话框相关 IPC
   
   /**

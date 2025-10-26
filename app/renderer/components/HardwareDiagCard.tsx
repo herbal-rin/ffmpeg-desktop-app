@@ -18,6 +18,12 @@ interface HardwareDiagCardProps {
   onPreferHardwareAccelChange: (enabled: boolean) => void;
 }
 
+interface EncoderTestResult {
+  encoder: string;
+  available: boolean;
+  error?: string;
+}
+
 export const HardwareDiagCard: React.FC<HardwareDiagCardProps> = ({
   preferHardwareAccel,
   onPreferHardwareAccelChange
@@ -25,6 +31,8 @@ export const HardwareDiagCard: React.FC<HardwareDiagCardProps> = ({
   const [diagnosticResult, setDiagnosticResult] = useState<GPUDiagnosticResult | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [testResult, setTestResult] = useState<EncoderTestResult | null>(null);
+  const [isTesting, setIsTesting] = useState(false);
 
   const runDiagnostic = async () => {
     setIsLoading(true);
@@ -117,6 +125,72 @@ export const HardwareDiagCard: React.FC<HardwareDiagCardProps> = ({
               </div>
             </div>
           )}
+
+          {/* 快速自测 */}
+          <div className="pt-4 border-t border-gray-200">
+            <h4 className="text-sm font-medium text-gray-700 mb-3">
+              快速自测
+            </h4>
+            <div className="flex gap-2 mb-3">
+              {['h264_nvenc', 'h264_qsv', 'h264_videotoolbox'].map((encoder) => (
+                <button
+                  key={encoder}
+                  onClick={async () => {
+                    setIsTesting(true);
+                    setTestResult(null);
+                    try {
+                      const result = await window.api.invoke('gpu/selfTest', { encoder });
+                      setTestResult({
+                        encoder,
+                        available: result.available,
+                        error: result.error
+                      });
+                    } catch (error) {
+                      setTestResult({
+                        encoder,
+                        available: false,
+                        error: error instanceof Error ? error.message : '测试失败'
+                      });
+                    } finally {
+                      setIsTesting(false);
+                    }
+                  }}
+                  disabled={isTesting}
+                  className="px-3 py-1.5 text-sm bg-blue-500 text-white rounded hover:bg-blue-600 disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  测试 {encoder}
+                </button>
+              ))}
+            </div>
+            
+            {testResult && (
+              <div className={`p-3 rounded-md ${
+                testResult.available 
+                  ? 'bg-green-50 border border-green-200' 
+                  : 'bg-red-50 border border-red-200'
+              }`}>
+                <div className="flex items-center gap-2">
+                  <span>{testResult.available ? '✅' : '❌'}</span>
+                  <span className="text-sm font-medium">
+                    {testResult.available 
+                      ? `${testResult.encoder} 可用` 
+                      : `${testResult.encoder} 不可用`}
+                  </span>
+                </div>
+                {testResult.error && (
+                  <div className="text-xs text-gray-600 mt-1 whitespace-pre-wrap">
+                    {testResult.error}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {isTesting && (
+              <div className="text-sm text-gray-500">
+                正在测试中...
+              </div>
+            )}
+          </div>
 
           {/* 建议和提示 */}
           {diagnosticResult.notes && diagnosticResult.notes.length > 0 && (
