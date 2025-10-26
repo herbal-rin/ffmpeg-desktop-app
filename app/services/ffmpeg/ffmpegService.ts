@@ -144,6 +144,43 @@ export class FfmpegService extends EventEmitter {
 
       // 原子写入：将临时文件重命名为最终文件
       if (fs.existsSync(tempOutputPath)) {
+        // 先验证输出文件
+        try {
+          const outputProbe = await this.ffprobeService.probe(tempOutputPath);
+          const outputDurationSec = outputProbe.durationSec;
+          
+          this.logger.info('转码任务完成', {
+            jobId: job.id,
+            output: finalOutputPath,
+            outputDurationSec: outputDurationSec.toFixed(2)
+          });
+          
+          // 验证输出时长（应在输入时长的合理范围内）
+          if (totalDurationMs > 0 && outputDurationSec > 0) {
+            const inputDurationSec = totalDurationMs / 1000;
+            const ratio = outputDurationSec / inputDurationSec;
+            
+            this.logger.info('输出时长验证', {
+              inputDurationSec: inputDurationSec.toFixed(2),
+              outputDurationSec: outputDurationSec.toFixed(2),
+              ratio: ratio.toFixed(2)
+            });
+            
+            // 如果输出时长少于输入的80%，认为可能有问题
+            if (ratio < 0.8) {
+              this.logger.warn('⚠️ 输出时长异常短，可能压缩失败', {
+                inputDurationSec: inputDurationSec.toFixed(2),
+                outputDurationSec: outputDurationSec.toFixed(2),
+                ratio: ratio.toFixed(2)
+              });
+            }
+          }
+        } catch (probeError) {
+          this.logger.warn('无法探测输出文件时长', {
+            error: probeError instanceof Error ? probeError.message : String(probeError)
+          });
+        }
+        
         fs.renameSync(tempOutputPath, finalOutputPath);
         this.logger.info('原子写入完成', {
           jobId: job.id,
@@ -151,11 +188,6 @@ export class FfmpegService extends EventEmitter {
           finalFile: finalOutputPath
         });
       }
-
-      this.logger.info('转码任务完成', {
-        jobId: job.id,
-        output: finalOutputPath
-      });
 
     } catch (error) {
       this.logger.error('转码任务处理失败', {
@@ -200,21 +232,44 @@ export class FfmpegService extends EventEmitter {
     onProgress: (progress: Progress) => void
   ): void {
     let buffer = Buffer.alloc(0);
+    let receivedAnyData = false;
 
     process.stdout?.on('data', (data: Buffer) => {
+      receivedAnyData = true;
       buffer = Buffer.concat([buffer, data]);
       
+      const fullText = buffer.toString('utf8');
+      this.logger.debug('FFmpeg stdout data', { 
+        size: data.length, 
+        bufferSize: buffer.length,
+        preview: fullText.slice(0, 200)
+      });
+      
       // 按行分割数据
-      const lines = buffer.toString('utf8').split('\n');
+      const lines = fullText.split('\n');
       buffer = Buffer.from(lines.pop() || '', 'utf8'); // 保留最后一行（可能不完整）
       
+      this.logger.debug('FFmpeg stdout lines', { lineCount: lines.length });
+      
       for (const line of lines) {
+        this.logger.debug('FFmpeg stdout line', { line: line.trim() });
         if (ProgressParser.isValidProgressLine(line)) {
+          this.logger.info('Valid FFmpeg progress line', { line });
           const partial = ProgressParser.parseProgressLine(line);
+          this.logger.info('FFmpeg progress parsed', { partial });
           const progress = ProgressParser.calculateProgress(partial, totalDurationMs);
+          this.logger.info('FFmpeg progress calculated', { progress, totalDurationMs });
           onProgress(progress);
         }
       }
+    });
+    
+    process.stdout?.on('end', () => {
+      this.logger.info('FFmpeg stdout ended', { receivedAnyData });
+    });
+    
+    process.stdout?.on('error', (error) => {
+      this.logger.error('FFmpeg stdout error', { error });
     });
 
     process.stderr?.on('data', (data: Buffer) => {
