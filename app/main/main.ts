@@ -225,7 +225,7 @@ app.whenReady().then(() => {
     setupToolsIPC();
     
     // 初始化设置 IPC（立即初始化，webContents 稍后更新）
-    const settingsIPC = new SettingsIPC(logger, configService);
+    new SettingsIPC(logger, configService);
     logger.info('设置IPC已初始化');
     
     logger.info('所有服务初始化成功');
