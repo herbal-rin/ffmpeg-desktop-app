@@ -255,10 +255,11 @@ export class FfmpegService extends EventEmitter {
           // 只有当timeMs更新时才计算并发送进度（减少发送频率）
           if (partial.timeMs !== undefined) {
             const progress = ProgressParser.calculateProgress(currentProgress, totalDurationMs);
-            this.logger.debug('FFmpeg progress', { 
+            this.logger.info('📊 FFmpeg progress', { 
               timeMs: currentProgress.timeMs, 
               ratio: progress.ratio.toFixed(4),
-              speed: currentProgress.speed 
+              speed: currentProgress.speed,
+              totalDurationMs 
             });
             onProgress(progress);
           }
