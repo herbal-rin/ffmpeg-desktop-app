@@ -32,7 +32,7 @@ function createMainWindow(): void {
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     show: false, // 先不显示，等加载完成
-    icon: join(__dirname, '../assets/icon.png') // 可选：应用图标
+    // icon: join(__dirname, '../assets/icon.png') // 可选：应用图标
   });
 
   // 加载页面
