@@ -188,12 +188,16 @@ export class SettingsIPC {
         if (!result.canceled && result.filePaths.length > 0) {
           const selectedPath = result.filePaths[0]!;
           
-          // 验证FFmpeg可执行
-          const isValid = await this.ffmpegManager.verifyFFmpeg(selectedPath);
-          if (isValid) {
-            return { success: true, path: selectedPath };
+          // 验证FFmpeg可执行（返回 { ok, sha256 } 对象）
+          const verifyResult = await this.ffmpegManager.verifyFFmpeg(selectedPath);
+          if (verifyResult.ok) {
+            this.logger.info('FFmpeg路径验证成功', { path: selectedPath, sha256: verifyResult.sha256.substring(0, 16) });
+            return { success: true, path: selectedPath, sha256: verifyResult.sha256 };
           } else {
-            return { success: false, error: '无效的FFmpeg可执行文件' };
+            return { 
+              success: false, 
+              error: `无效的FFmpeg可执行文件: ${verifyResult.sha256 ? `SHA256=${verifyResult.sha256.substring(0, 16)}` : '文件不存在或不可执行'}`
+            };
           }
         }
         
@@ -219,12 +223,16 @@ export class SettingsIPC {
         if (!result.canceled && result.filePaths.length > 0) {
           const selectedPath = result.filePaths[0]!;
           
-          // 验证FFprobe可执行
-          const isValid = await this.ffmpegManager.verifyFFmpeg(selectedPath);
-          if (isValid) {
-            return { success: true, path: selectedPath };
+          // 验证FFprobe可执行（返回 { ok, sha256 } 对象）
+          const verifyResult = await this.ffmpegManager.verifyFFmpeg(selectedPath);
+          if (verifyResult.ok) {
+            this.logger.info('FFprobe路径验证成功', { path: selectedPath, sha256: verifyResult.sha256.substring(0, 16) });
+            return { success: true, path: selectedPath, sha256: verifyResult.sha256 };
           } else {
-            return { success: false, error: '无效的FFprobe可执行文件' };
+            return { 
+              success: false, 
+              error: `无效的FFprobe可执行文件: ${verifyResult.sha256 ? `SHA256=${verifyResult.sha256.substring(0, 16)}` : '文件不存在或不可执行'}`
+            };
           }
         }
         
@@ -313,6 +321,10 @@ export class SettingsIPC {
       
       if (settings.preferHardwareAccel !== undefined) {
         this.configService.setHardwareAcceleration(settings.preferHardwareAccel);
+      }
+      
+      if (settings.ffmpegManaged !== undefined) {
+        this.configService.setFfmpegManaged(settings.ffmpegManaged);
       }
       
       return { ok: true };

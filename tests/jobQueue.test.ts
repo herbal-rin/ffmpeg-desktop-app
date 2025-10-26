@@ -95,7 +95,7 @@ describe('JobQueue', () => {
       };
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
 
       expect(job.id).toBeDefined();
       expect(job.status).toBe('running'); // 任务会立即开始执行
@@ -119,7 +119,7 @@ describe('JobQueue', () => {
       jobQueue.on('job-done', (_data) => events.push({ type: 'job-done', data: _data }));
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
 
       // 等待任务完成
       await new Promise(resolve => setTimeout(resolve, 2000));
@@ -142,7 +142,7 @@ describe('JobQueue', () => {
       };
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
       expect(jobQueue.getStatus().queueLength).toBe(0); // 任务立即开始执行
 
       jobQueue.cancel(job.id);
@@ -164,7 +164,7 @@ describe('JobQueue', () => {
       jobQueue.on('job-canceled', (data) => events.push({ type: 'job-canceled', data }));
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
       
       // 等待任务开始
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -188,7 +188,7 @@ describe('JobQueue', () => {
       };
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
       
       // 等待任务开始
       await new Promise(resolve => setTimeout(resolve, 200));
@@ -216,7 +216,7 @@ describe('JobQueue', () => {
       };
 
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const job = jobQueue.enqueue(opts);
+      const _job = jobQueue.enqueue(opts);
       const status = jobQueue.getStatus();
 
       expect(status.queueLength).toBe(0); // 任务立即开始执行，队列为空

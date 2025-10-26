@@ -202,7 +202,7 @@ export const ToolsPage: React.FC = () => {
   }, 400); // 400ms 防抖
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _handlePreview = async (type: 'trim' | 'gif') => {
+  const _handlePreview = async (_type: 'trim' | 'gif') => {
     if (!selectedFile) return;
 
     try {

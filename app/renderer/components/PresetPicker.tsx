@@ -101,8 +101,8 @@ export function PresetPicker({ value, onChange, disabled = false }: PresetPicker
     onChange('custom', newConfig);
   };
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  const _getPresetArgs = (preset: string, codec: VideoCodec | 'auto'): string[] => {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars, @typescript-eslint/no-explicit-any
+  const _getPresetArgs = (_preset: string, _codec: VideoCodec | 'auto'): any => {
     if (preset === 'custom') {
       const args: string[] = [];
       

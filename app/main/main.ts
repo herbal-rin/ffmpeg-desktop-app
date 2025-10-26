@@ -181,19 +181,34 @@ app.whenReady().then(() => {
   // 初始化服务
   try {
     const logger = new ConsoleLogger('debug');
-    const ffmpegPaths = configService.getPaths();
-    const ffprobeService = new FFprobeService(ffmpegPaths, logger);
-    const previewService = new PreviewService(logger, ffmpegPaths);
     
-    // 初始化工具服务
-    initializeToolsServices({
-      previewService,
-      ffprobeService,
-      logger,
-      ffmpegPaths
-    });
+    // 尝试获取 FFmpeg 路径，如果未配置则不初始化相关服务
+    let ffmpegPaths;
+    try {
+      ffmpegPaths = configService.getPaths();
+      
+      // 只有在路径有效时才初始化服务
+      const ffprobeService = new FFprobeService(ffmpegPaths, logger);
+      const previewService = new PreviewService(logger, ffmpegPaths);
+      
+      // 初始化工具服务
+      initializeToolsServices({
+        previewService,
+        ffprobeService,
+        logger,
+        ffmpegPaths
+      });
+      
+      logger.info('工具服务已初始化');
+    } catch (error) {
+      // FFmpeg 未配置，使用默认路径，但不初始化服务
+      logger.warn('FFmpeg未配置，跳过工具服务初始化', { 
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      // 保持 mainWindow 可访问设置页
+    }
     
-    // 设置工具 IPC
+    // 设置工具 IPC（即使 FFmpeg 未配置也设置，允许进入设置页）
     setupToolsIPC();
     
     // 初始化设置 IPC（延迟到窗口创建后）
