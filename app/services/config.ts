@@ -12,7 +12,8 @@ interface ConfigSchema {
   defaultOutputDir: string;
   hardwareAcceleration: boolean;
   language: string;
-  theme: string;
+  theme: 'light' | 'dark' | 'system'; // 支持 system 主题
+  ffmpegManaged: boolean; // 是否使用托管 FFmpeg
   version: string;
   lastUpdated: number;
 }
@@ -34,7 +35,8 @@ export class ConfigService {
         defaultOutputDir: this.getDefaultOutputPath(),
         hardwareAcceleration: true,
         language: 'zh-CN',
-        theme: 'light',
+        theme: 'system' as 'light' | 'dark' | 'system', // 默认使用系统主题
+        ffmpegManaged: false, // 默认使用系统 FFmpeg
         version: currentVersion,
         lastUpdated: currentTime
       },
@@ -62,8 +64,12 @@ export class ConfigService {
         },
         theme: {
           type: 'string',
-          enum: ['light', 'dark'],
-          default: 'light'
+          enum: ['light', 'dark', 'system'],
+          default: 'system'
+        },
+        ffmpegManaged: {
+          type: 'boolean',
+          default: false
         },
         version: {
           type: 'string',
@@ -85,8 +91,11 @@ export class ConfigService {
           if (!currentData.language || !['zh-CN', 'en'].includes(currentData.language)) {
             store.set('language', 'zh-CN');
           }
-          if (!currentData.theme || !['light', 'dark'].includes(currentData.theme)) {
-            store.set('theme', 'light');
+          if (!currentData.theme || !['light', 'dark', 'system'].includes(currentData.theme)) {
+            store.set('theme', 'system');
+          }
+          if (currentData.ffmpegManaged === undefined) {
+            store.set('ffmpegManaged', false);
           }
         }
       }
@@ -190,15 +199,29 @@ FFmpeg 可执行文件路径未配置。
   /**
    * 获取主题设置
    */
-  getTheme(): string {
+  getTheme(): 'light' | 'dark' | 'system' {
     return this.store.get('theme');
   }
 
   /**
    * 设置主题
    */
-  setTheme(theme: string): void {
+  setTheme(theme: 'light' | 'dark' | 'system'): void {
     this.store.set('theme', theme);
+  }
+
+  /**
+   * 获取FFmpeg托管状态
+   */
+  getFfmpegManaged(): boolean {
+    return this.store.get('ffmpegManaged');
+  }
+
+  /**
+   * 设置FFmpeg托管状态
+   */
+  setFfmpegManaged(managed: boolean): void {
+    this.store.set('ffmpegManaged', managed);
   }
 
   /**

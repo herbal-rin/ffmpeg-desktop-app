@@ -21,6 +21,7 @@ export interface FFmpegLocation {
 
 export interface FFmpegState {
   managed: boolean;
+  ffmpegManaged?: boolean; // 是否使用托管版本
   active: {
     ffmpeg: string;
     ffprobe: string;
@@ -130,7 +131,9 @@ export class FFmpegManager extends EventEmitter {
   private async findExecutable(name: string): Promise<string | null> {
     return new Promise((resolve) => {
       const command = process.platform === 'win32' ? 'where' : 'which';
-      const childProcess = spawn(command, [name], { shell: true });
+      
+      // 使用数组参数，禁用shell
+      const childProcess = spawn(command, [name], { shell: false });
       
       let output = '';
       

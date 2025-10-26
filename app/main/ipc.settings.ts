@@ -257,15 +257,16 @@ export class SettingsIPC {
     const language = this.configService.getLanguage();
     const theme = this.configService.getTheme();
     const preferHardwareAccel = this.configService.getHardwareAcceleration();
+    const ffmpegManaged = this.configService.getFfmpegManaged();
     
     return {
       defaultOutputDir,
       language: language === 'zh-CN' ? 'zh' : 'en', // 转换格式
-      theme: theme === 'light' ? 'light' : theme === 'dark' ? 'dark' : 'system', // 转换格式
+      theme: theme as 'light' | 'dark' | 'system', // 直接返回，支持 system
       preferHardwareAccel,
       ffmpegPath,
       ffprobePath,
-      ffmpegManaged: false // TODO: 从配置中获取
+      ffmpegManaged // 从配置中获取真实值
     };
   }
 
@@ -282,18 +283,20 @@ export class SettingsIPC {
       }
       
       if (settings.ffmpegPath !== undefined) {
-        const isValid = await this.ffmpegManager.verifyFFmpeg(settings.ffmpegPath);
-        if (!isValid) {
-          throw new Error('FFmpeg路径无效');
+        const result = await this.ffmpegManager.verifyFFmpeg(settings.ffmpegPath);
+        if (!result.ok) {
+          throw new Error(`FFmpeg路径无效: ${result.sha256 ? `SHA256=${result.sha256.substring(0, 16)}` : '文件不存在或不可执行'}`);
         }
+        this.logger.info('FFmpeg路径验证成功', { path: settings.ffmpegPath, sha256: result.sha256.substring(0, 16) });
         this.configService.setFfmpegPath(settings.ffmpegPath);
       }
       
       if (settings.ffprobePath !== undefined) {
-        const isValid = await this.ffmpegManager.verifyFFmpeg(settings.ffprobePath);
-        if (!isValid) {
-          throw new Error('FFprobe路径无效');
+        const result = await this.ffmpegManager.verifyFFmpeg(settings.ffprobePath);
+        if (!result.ok) {
+          throw new Error(`FFprobe路径无效: ${result.sha256 ? `SHA256=${result.sha256.substring(0, 16)}` : '文件不存在或不可执行'}`);
         }
+        this.logger.info('FFprobe路径验证成功', { path: settings.ffprobePath, sha256: result.sha256.substring(0, 16) });
         this.configService.setFfprobePath(settings.ffprobePath);
       }
       
@@ -304,9 +307,8 @@ export class SettingsIPC {
       }
       
       if (settings.theme !== undefined) {
-        // 转换格式：'system' -> 'light' (默认)
-        const configTheme = settings.theme === 'system' ? 'light' : settings.theme;
-        this.configService.setTheme(configTheme);
+        // 直接保存，支持 'system'
+        this.configService.setTheme(settings.theme as 'light' | 'dark' | 'system');
       }
       
       if (settings.preferHardwareAccel !== undefined) {
