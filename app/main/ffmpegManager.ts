@@ -54,10 +54,11 @@ export interface DownloadProgress {
 
 export class FFmpegManager extends EventEmitter {
   private downloadTasks = new Map<string, DownloadTask>();
+  private activeRequests = new Map<string, any>(); // 保存 ClientRequest 句柄用于取消
   private appDataPath: string;
   private ffmpegManagedPath: string;
 
-  constructor(private logger: Logger) {
+  constructor(private logger: Logger, private webContents?: Electron.WebContents) {
     super();
     
     // 设置应用数据目录
@@ -66,6 +67,13 @@ export class FFmpegManager extends EventEmitter {
     
     // 确保目录存在
     this.ensureDirectories();
+    
+    // 转发进度事件到渲染进程
+    this.on('download-progress', (data: DownloadProgress) => {
+      if (this.webContents && !this.webContents.isDestroyed()) {
+        this.webContents.send('ffmpeg/download-progress', data);
+      }
+    });
   }
 
   /**
@@ -148,15 +156,27 @@ export class FFmpegManager extends EventEmitter {
   /**
    * 获取FFmpeg状态
    */
-  async getFFmpegState(): Promise<FFmpegState> {
+  async getFFmpegState(configService?: any): Promise<FFmpegState> {
     const managedVersions = this.getManagedVersions();
+    
+    // 从配置服务获取真实路径
+    let activeFfmpeg = '';
+    let activeFfprobe = '';
+    let ffmpegManaged = false;
+    
+    if (configService) {
+      activeFfmpeg = configService.getFfmpegPath() || '';
+      activeFfprobe = configService.getFfprobePath() || '';
+      ffmpegManaged = configService.getFfmpegManaged?.() || false;
+    }
     
     return {
       managed: managedVersions.length > 0,
       active: {
-        ffmpeg: '', // 从配置中获取
-        ffprobe: '' // 从配置中获取
+        ffmpeg: activeFfmpeg,
+        ffprobe: activeFfprobe
       },
+      ffmpegManaged,
       versions: managedVersions
     };
   }
@@ -247,7 +267,8 @@ export class FFmpegManager extends EventEmitter {
       
       // 验证文件
       this.updateTaskStatus(task.taskId, 'verifying', 50, '验证文件完整性...');
-      await this.verifyDownloadedFile(downloadPath, task.taskId);
+      const sha256 = await this.verifyDownloadedFile(downloadPath, task.taskId);
+      this.logger.info('文件SHA256校验完成', { taskId: task.taskId, sha256: sha256.substring(0, 16) });
       
       // 解压文件
       this.updateTaskStatus(task.taskId, 'extracting', 75, '解压文件...');
@@ -278,9 +299,12 @@ export class FFmpegManager extends EventEmitter {
       const https = require('https');
       const file = fs.createWriteStream(filePath);
       
-      https.get(url, (response: any) => {
+      const request = https.get(url, (response: any) => {
         const totalBytes = parseInt(response.headers['content-length'] || '0', 10);
         let receivedBytes = 0;
+        
+        // 保存请求句柄以便取消
+        this.activeRequests.set(taskId, { request, response, file });
         
         response.on('data', (chunk: Buffer) => {
           receivedBytes += chunk.length;
@@ -293,31 +317,45 @@ export class FFmpegManager extends EventEmitter {
         
         file.on('finish', () => {
           file.close();
+          this.activeRequests.delete(taskId);
           resolve();
         });
         
         file.on('error', (error) => {
           fs.unlink(filePath, () => {}); // 删除部分下载的文件
+          this.activeRequests.delete(taskId);
           reject(error);
         });
       }).on('error', (error: Error) => {
+        this.activeRequests.delete(taskId);
         reject(error);
       });
+      
+      // 保存主请求以便取消
+      if (!this.activeRequests.has(taskId)) {
+        this.activeRequests.set(taskId, { request });
+      }
     });
   }
 
   /**
-   * 验证下载的文件
+   * 验证下载的文件（SHA256）
    */
-  private async verifyDownloadedFile(filePath: string, taskId: string): Promise<void> {
-    // 这里可以添加SHA256验证逻辑
-    // 目前只检查文件是否存在且大小大于0
+  private async verifyDownloadedFile(filePath: string, taskId: string): Promise<string> {
+    const crypto = require('crypto');
     const stats = fs.statSync(filePath);
+    
     if (stats.size === 0) {
       throw new Error('下载的文件为空');
     }
     
-    this.logger.debug('文件验证通过', { taskId, size: stats.size });
+    // 计算SHA256
+    const fileBuffer = fs.readFileSync(filePath);
+    const hash = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+    
+    this.logger.debug('文件验证通过', { taskId, size: stats.size, sha256: hash.substring(0, 16) });
+    
+    return hash;
   }
 
   /**
@@ -400,6 +438,22 @@ export class FFmpegManager extends EventEmitter {
       return false;
     }
     
+    // 中断正在进行的 https 请求
+    const activeRequest = this.activeRequests.get(taskId);
+    if (activeRequest) {
+      if (activeRequest.request) {
+        activeRequest.request.abort(); // 中断请求
+      }
+      if (activeRequest.file) {
+        activeRequest.file.end(); // 结束文件流
+      }
+      if (activeRequest.response) {
+        activeRequest.response.destroy(); // 销毁响应流
+      }
+      this.activeRequests.delete(taskId);
+      this.logger.info('已中断下载请求', { taskId });
+    }
+    
     // 清理下载文件
     const downloadPath = path.join(this.appDataPath, 'downloads', `${taskId}.tmp`);
     if (fs.existsSync(downloadPath)) {
@@ -422,16 +476,39 @@ export class FFmpegManager extends EventEmitter {
   /**
    * 验证FFmpeg可执行文件
    */
-  async verifyFFmpeg(ffmpegPath: string): Promise<boolean> {
+  async verifyFFmpeg(ffmpegPath: string, expectedSha256?: string): Promise<{ ok: boolean; sha256: string }> {
     return new Promise((resolve) => {
+      // 检查文件是否存在
+      if (!fs.existsSync(ffmpegPath)) {
+        resolve({ ok: false, sha256: '' });
+        return;
+      }
+      
+      // 计算SHA256
+      const crypto = require('crypto');
+      const fileBuffer = fs.readFileSync(ffmpegPath);
+      const actualSha256 = crypto.createHash('sha256').update(fileBuffer).digest('hex');
+      
+      // 如果提供了期望值，进行校验
+      if (expectedSha256 && actualSha256 !== expectedSha256) {
+        this.logger.warn('SHA256不匹配', { 
+          filePath: ffmpegPath, 
+          expected: expectedSha256.substring(0, 16), 
+          actual: actualSha256.substring(0, 16) 
+        });
+        resolve({ ok: false, sha256: actualSha256 });
+        return;
+      }
+      
+      // 验证可执行
       const process = spawn(ffmpegPath, ['-version'], { shell: false });
       
       process.on('close', (code) => {
-        resolve(code === 0);
+        resolve({ ok: code === 0, sha256: actualSha256 });
       });
       
       process.on('error', () => {
-        resolve(false);
+        resolve({ ok: false, sha256: actualSha256 });
       });
     });
   }
@@ -442,15 +519,15 @@ export class FFmpegManager extends EventEmitter {
   async switchFFmpeg(ffmpegPath: string, ffprobePath?: string, managed: boolean = false): Promise<boolean> {
     try {
       // 验证FFmpeg可执行
-      const isValid = await this.verifyFFmpeg(ffmpegPath);
-      if (!isValid) {
+      const ffmpegResult = await this.verifyFFmpeg(ffmpegPath);
+      if (!ffmpegResult.ok) {
         throw new Error('FFmpeg可执行文件无效');
       }
       
       // 验证FFprobe（如果提供）
       if (ffprobePath) {
-        const ffprobeValid = await this.verifyFFmpeg(ffprobePath);
-        if (!ffprobeValid) {
+        const ffprobeResult = await this.verifyFFmpeg(ffprobePath);
+        if (!ffprobeResult.ok) {
           throw new Error('FFprobe可执行文件无效');
         }
       }

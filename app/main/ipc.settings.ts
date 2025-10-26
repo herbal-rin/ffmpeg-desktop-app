@@ -31,10 +31,11 @@ export class SettingsIPC {
 
   constructor(
     private logger: Logger,
-    configService: ConfigService
+    configService: ConfigService,
+    webContents?: Electron.WebContents
   ) {
     this.configService = configService;
-    this.ffmpegManager = new FFmpegManager(logger);
+    this.ffmpegManager = new FFmpegManager(logger, webContents);
     this.gpuDetector = new GPUDetector(logger);
     
     this.setupIPC();
@@ -89,7 +90,7 @@ export class SettingsIPC {
     // 获取FFmpeg状态
     ipcMain.handle('ffmpeg/getState', async (_event) => {
       try {
-        return await this.ffmpegManager.getFFmpegState();
+        return await this.ffmpegManager.getFFmpegState(this.configService);
       } catch (error) {
         this.logger.error('获取FFmpeg状态失败', { error: error instanceof Error ? error.message : String(error) });
         throw error;
@@ -119,7 +120,7 @@ export class SettingsIPC {
     // 验证FFmpeg
     ipcMain.handle('ffmpeg/verify', async (_event, request: { path: string; sha256?: string }) => {
       try {
-        return await this.ffmpegManager.verifyFFmpeg(request.path);
+        return await this.ffmpegManager.verifyFFmpeg(request.path, request.sha256);
       } catch (error) {
         this.logger.error('验证FFmpeg失败', { error: error instanceof Error ? error.message : String(error) });
         throw error;
