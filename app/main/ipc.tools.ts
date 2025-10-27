@@ -363,10 +363,13 @@ export function setupToolsIPC() {
         // 添加容器格式参数
         const format = request.container === 'mp4' ? 'mp4' : 'matroska';
         
+        // 计算持续时间
+        const duration = request.range.endSec - request.range.startSec;
+        
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
-          '-to', request.range.endSec.toString(),
+          '-t', duration.toString(), // 使用 -t 指定持续时间
           '-i', request.input, // 直接使用原始路径（spawn 使用数组参数）
           '-c', 'copy',
           '-map', '0', // 映射所有流
