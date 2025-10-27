@@ -138,6 +138,8 @@ async function tryLosslessThenPrecise(
  */
 async function executeFFmpegCommand(args: string[]): Promise<boolean> {
   return new Promise((resolve) => {
+    let stderrOutput = '';
+    
     const process = spawn(ffmpegPaths!.ffmpeg, args, {
       stdio: ['ignore', 'pipe', 'pipe'],
       shell: false,
@@ -145,11 +147,24 @@ async function executeFFmpegCommand(args: string[]): Promise<boolean> {
       detached: false
     });
 
+    // 捕获 stderr
+    process.stderr?.on('data', (data) => {
+      stderrOutput += data.toString();
+    });
+
     process.on('close', (code) => {
+      if (code !== 0) {
+        logger!.error('FFmpeg 命令失败', { 
+          code, 
+          args: args.join(' '),
+          stderr: stderrOutput.slice(-500) // 只保留最后 500 字符
+        });
+      }
       resolve(code === 0);
     });
 
-    process.on('error', () => {
+    process.on('error', (error) => {
+      logger!.error('FFmpeg 命令执行出错', { error: error.message, args: args.join(' ') });
       resolve(false);
     });
   });
@@ -163,9 +178,12 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     throw new Error('精准剪模式需要指定视频编码器');
   }
 
+  // 使用正确的 preset
+  const preset = ArgsBuilder.toPreset('balanced', request.videoCodec);
+  
   const videoArgs = ArgsBuilder.buildVideoArgs(
     request.videoCodec,
-    { name: 'balanced', args: [] },
+    preset,
     request.container,
     request.audio
   );
