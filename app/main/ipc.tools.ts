@@ -369,8 +369,8 @@ export function setupToolsIPC() {
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
-          '-t', duration.toString(), // 使用 -t 指定持续时间
           '-i', request.input, // 直接使用原始路径（spawn 使用数组参数）
+          '-t', duration.toString(), // 使用 -t 指定持续时间（必须在 -i 之后）
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
