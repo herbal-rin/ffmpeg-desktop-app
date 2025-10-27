@@ -94,12 +94,60 @@ async function tryLosslessThenPrecise(
       if (success) {
         // 无损快剪成功，检查输出文件时长
         const outputProbe = await ffprobeService!.probe(tempPath);
+        const expectedDuration = request.range.endSec - request.range.startSec;
+        const actualDuration = outputProbe.durationSec;
+        const durationError = Math.abs(actualDuration - expectedDuration);
+        const durationRatio = durationError / expectedDuration;
+        
         logger!.info('无损快剪完成，输出文件信息', { 
           outputPath: tempPath,
-          duration: outputProbe.durationSec,
-          expectedDuration: request.range.endSec - request.range.startSec
+          duration: actualDuration,
+          expectedDuration,
+          durationError,
+          durationRatio
         });
         
+        // 如果时长误差超过10%，说明无损快剪不精确，应该使用精准剪
+        if (durationRatio > 0.1) {
+          logger!.warn('无损快剪时长不精确，切换为精准剪', {
+            actualDuration,
+            expectedDuration,
+            errorPercent: (durationRatio * 100).toFixed(2) + '%'
+          });
+          
+          // 清理临时文件，继续尝试精准剪
+          if (fs.existsSync(tempPath)) {
+            fs.unlinkSync(tempPath);
+          }
+          
+          // 检查是否原本就是无损模式
+          const isLosslessMode = request.mode === 'lossless';
+          
+          if (isLosslessMode) {
+            logger!.warn('准备切换到精准剪模式', { 
+              reason: '时长不精确',
+              originalMode: 'lossless',
+              fallbackMode: 'precise'
+            });
+
+            // 构建精准剪参数
+            const preciseArgs = buildPreciseTrimArgs(request, tempPath);
+            
+            // 尝试精准剪
+            const preciseSuccess = await executeFFmpegCommand(preciseArgs);
+            
+            if (preciseSuccess) {
+              fs.renameSync(tempPath, outputPath);
+              logger!.info('精准剪导出完成（无损快剪时长不精确后的回退）', { outputPath });
+              resolve({ output: outputPath });
+            } else {
+              reject(new Error('精准剪导出也失败了，请检查输入文件或调整参数'));
+            }
+            return;
+          }
+        }
+        
+        // 时长误差在可接受范围内，使用无损快剪的结果
         fs.renameSync(tempPath, outputPath);
         logger!.info('无损快剪导出完成', { outputPath });
         resolve({ output: outputPath });
