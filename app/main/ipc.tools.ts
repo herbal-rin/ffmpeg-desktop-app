@@ -254,11 +254,9 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
   const args = [
     '-y',
     '-ss', request.range.startSec.toString(),
-    '-accurate_seek',
     '-i', request.input,
-    '-to', (request.range.endSec - request.range.startSec).toString(),
+    '-t', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
-    '-force_key_frames', 'expr:gte(t,0)',
     '-f', format, // 显式指定容器格式
     tempPath
   ];

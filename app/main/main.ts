@@ -244,6 +244,27 @@ app.whenReady().then(() => {
       const ffprobeService = new FFprobeService(ffmpegPaths, logger);
       const previewService = new PreviewService(logger, ffmpegPaths);
       
+      // 监听预览事件并转发到 renderer
+      previewService.on('preview-start', () => {
+        mainWindow?.webContents.send('tools/events', { type: 'preview-start' });
+      });
+      
+      previewService.on('preview-progress', (payload) => {
+        mainWindow?.webContents.send('tools/events', { type: 'preview-progress', progress: payload });
+      });
+      
+      previewService.on('preview-done', (payload) => {
+        mainWindow?.webContents.send('tools/events', { type: 'preview-done', tempPath: payload.outputPath });
+      });
+      
+      previewService.on('preview-error', (payload) => {
+        mainWindow?.webContents.send('tools/events', { type: 'preview-error', error: payload.error });
+      });
+      
+      previewService.on('preview-cancelled', () => {
+        mainWindow?.webContents.send('tools/events', { type: 'preview-cancelled' });
+      });
+      
       // 初始化工具服务
       initializeToolsServices({
         previewService,
