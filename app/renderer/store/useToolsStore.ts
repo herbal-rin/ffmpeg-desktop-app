@@ -9,7 +9,6 @@ export interface FileInfo {
   file: File;
   tempPath: string;
   probeResult?: any; // ProbeResult 类型
-  dataUrl?: string; // 用于视频预览的数据 URL
 }
 
 export interface TimeRange {

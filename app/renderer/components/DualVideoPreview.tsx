@@ -3,7 +3,7 @@
  * 左侧显示原视频，右侧显示预览结果
  */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useMemo } from 'react';
 import { useToolsStore } from '../store/useToolsStore';
 
 interface DualVideoPreviewProps {
@@ -16,11 +16,35 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
 
+  // 为原视频创建 blob URL
+  const videoSrc = useMemo(() => {
+    if (selectedFile?.file) {
+      return URL.createObjectURL(selectedFile.file);
+    }
+    return undefined;
+  }, [selectedFile?.file]);
+
+  // 清理 blob URL
+  useEffect(() => {
+    return () => {
+      if (videoSrc) {
+        URL.revokeObjectURL(videoSrc);
+      }
+    };
+  }, [videoSrc]);
+
   // 当预览文件更新时，重新加载预览
   useEffect(() => {
     if (previewPath) {
       setPreviewKey(prev => prev + 1);
     }
+  }, [previewPath]);
+
+  // 获取预览 URL
+  const previewUrl = useMemo(() => {
+    if (!previewPath) return undefined;
+    // 使用自定义协议加载本地临时文件
+    return `local-video://${previewPath}`;
   }, [previewPath]);
 
   // 检查是否为 GIF 文件
@@ -45,7 +69,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
           <div className="flex-1 flex items-center justify-center">
             <video
               ref={videoRef}
-              src={selectedFile.dataUrl}
+              src={videoSrc}
               controls
               className="max-w-full max-h-full"
               onLoadedMetadata={() => {
@@ -75,7 +99,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
               isGifPreview ? (
                 <img
                   key={previewKey}
-                  src={previewPath.startsWith('file://') ? previewPath : `file://${previewPath}`}
+                  src={previewUrl}
                   alt="GIF 预览"
                   className="max-w-full max-h-full object-contain"
                 />
@@ -83,7 +107,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
                 <video
                   ref={previewRef}
                   key={previewKey}
-                  src={previewPath.startsWith('file://') ? previewPath : `file://${previewPath}`}
+                  src={previewUrl}
                   controls
                   className="max-w-full max-h-full"
                   onLoadedMetadata={() => {

@@ -1,5 +1,6 @@
-import { app, BrowserWindow, Menu, shell } from 'electron';
+import { app, BrowserWindow, Menu, shell, protocol } from 'electron';
 import { join } from 'path';
+import fs from 'fs';
 import { setupIPC } from './ipc';
 import { setupToolsIPC, initializeToolsServices } from './ipc.tools';
 import { SettingsIPC } from './ipc.settings';
@@ -10,6 +11,42 @@ import { configService } from '../services/config';
 
 // 主窗口
 let mainWindow: BrowserWindow | null = null;
+
+/**
+ * 注册自定义协议用于安全访问本地文件
+ */
+function registerLocalFileProtocol(): void {
+  protocol.registerBufferProtocol('local-video', (request, callback) => {
+    const url = request.url.replace('local-video://', '');
+    try {
+      const fileBuffer = fs.readFileSync(url);
+      const mimeType = getMimeType(url);
+      callback({
+        mimeType,
+        data: fileBuffer
+      });
+    } catch (error) {
+      callback({
+        error: -2 // FILE_NOT_FOUND
+      });
+    }
+  });
+}
+
+/**
+ * 根据文件扩展名获取 MIME 类型
+ */
+function getMimeType(filePath: string): string {
+  const ext = filePath.split('.').pop()?.toLowerCase();
+  const mimeTypes: Record<string, string> = {
+    'mp4': 'video/mp4',
+    'mkv': 'video/x-matroska',
+    'avi': 'video/x-msvideo',
+    'mov': 'video/quicktime',
+    'gif': 'image/gif'
+  };
+  return mimeTypes[ext || ''] || 'application/octet-stream';
+}
 
 /**
  * 创建主窗口
@@ -25,7 +62,7 @@ function createMainWindow(): void {
       contextIsolation: true,
       sandbox: true,
       preload: join(__dirname, 'preload.js'),
-      webSecurity: false // 允许加载本地文件用于视频预览
+      webSecurity: true // 使用自定义协议安全访问本地文件
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     show: false, // 先不显示，等加载完成
@@ -188,6 +225,9 @@ function createMenu(): void {
  * 应用准备就绪
  */
 app.whenReady().then(() => {
+  // 注册自定义协议
+  registerLocalFileProtocol();
+  
   // 设置 IPC
   setupIPC();
   

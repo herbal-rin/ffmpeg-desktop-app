@@ -164,14 +164,10 @@ export const ToolsPage: React.FC = () => {
       // 获取媒体信息
       const probeResult = await window.api.invoke('ffmpeg/probe', { input: tempPath });
 
-      // 创建本地文件的对象 URL（用于视频预览）
-      const dataUrl = URL.createObjectURL(file!);
-
       const fileInfo = {
         file: file!,
         tempPath,
-        probeResult,
-        dataUrl // 添加 dataUrl 用于预览
+        probeResult
       };
 
       setSelectedFile(fileInfo);
