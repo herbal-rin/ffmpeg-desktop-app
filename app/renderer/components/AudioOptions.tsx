@@ -120,20 +120,24 @@ export function AudioOptions({ value, onChange, disabled = false }: AudioOptions
           <div>
             <label className="label text-sm">{t('audio.bitrate')}</label>
             <div className="grid grid-cols-4 gap-2">
-              {[64, 96, 128, 192, 256, 320].map((bitrate) => (
-                <button
-                  key={bitrate}
-                  onClick={() => handleBitrateChange(bitrate)}
-                  disabled={disabled}
-                  className={`btn btn-sm ${
-                    value.bitrateK === bitrate 
-                      ? 'btn-primary' 
-                      : 'btn-outline'
-                  }`}
-                >
-                  {bitrate}k
-                </button>
-              ))}
+              {[64, 96, 128, 192, 256, 320].map((bitrate) => {
+                const isSelected = value.bitrateK === bitrate;
+                return (
+                  <button
+                    key={bitrate}
+                    onClick={() => handleBitrateChange(bitrate)}
+                    disabled={disabled}
+                    className={`px-3 py-2 text-sm font-medium rounded-md transition-all ${
+                      isSelected
+                        ? 'bg-blue-600 text-white shadow-md border-2 border-blue-700' 
+                        : 'bg-white dark:bg-gray-700 text-gray-700 dark:text-gray-300 border border-gray-300 dark:border-gray-600 hover:bg-gray-100 dark:hover:bg-gray-600'
+                    } disabled:opacity-50 disabled:cursor-not-allowed`}
+                  >
+                    {bitrate}k
+                    {isSelected && <span className="ml-1">✓</span>}
+                  </button>
+                );
+              })}
             </div>
             
             {/* 推荐码率提示 */}
