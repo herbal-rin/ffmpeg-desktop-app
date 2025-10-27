@@ -16,22 +16,34 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewRef = useRef<HTMLVideoElement>(null);
 
-  // 为原视频创建 blob URL
+  // 为原视频创建和管理 blob URL
+  const blobUrlRef = useRef<string | undefined>();
+  
   const videoSrc = useMemo(() => {
+    // 清理旧的 blob URL
+    if (blobUrlRef.current) {
+      URL.revokeObjectURL(blobUrlRef.current);
+      blobUrlRef.current = undefined;
+    }
+    
+    // 创建新的 blob URL
     if (selectedFile?.file) {
-      return URL.createObjectURL(selectedFile.file);
+      const newBlobUrl = URL.createObjectURL(selectedFile.file);
+      blobUrlRef.current = newBlobUrl;
+      return newBlobUrl;
     }
     return undefined;
   }, [selectedFile?.file]);
 
-  // 清理 blob URL
+  // 组件卸载时清理 blob URL
   useEffect(() => {
     return () => {
-      if (videoSrc) {
-        URL.revokeObjectURL(videoSrc);
+      if (blobUrlRef.current) {
+        URL.revokeObjectURL(blobUrlRef.current);
+        blobUrlRef.current = undefined;
       }
     };
-  }, [videoSrc]);
+  }, []);
 
   // 当预览文件更新时，重新加载预览
   useEffect(() => {

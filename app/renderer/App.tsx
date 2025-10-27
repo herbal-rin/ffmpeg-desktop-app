@@ -184,9 +184,15 @@ export function App() {
 
       {/* 页面内容 */}
       <main>
-        {currentPage === 'compress' && <CompressPage />}
-        {currentPage === 'tools' && <ToolsPage />}
-        {currentPage === 'settings' && <SettingsPage />}
+        <div style={{ display: currentPage === 'compress' ? 'block' : 'none' }}>
+          <CompressPage />
+        </div>
+        <div style={{ display: currentPage === 'tools' ? 'block' : 'none' }}>
+          <ToolsPage />
+        </div>
+        <div style={{ display: currentPage === 'settings' ? 'block' : 'none' }}>
+          <SettingsPage />
+        </div>
       </main>
       
       <Toast />
