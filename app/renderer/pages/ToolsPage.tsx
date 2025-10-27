@@ -44,6 +44,7 @@ export const ToolsPage: React.FC = () => {
 
   const [isTransferringFile, setIsTransferringFile] = useState(false);
   const [transferProgress, setTransferProgress] = useState(0);
+  const lastLoadedFileName = React.useRef<string>('');
 
   // 显示提示
   const showToast = (message: string, type: 'info' | 'error' | 'success' | 'warning') => {
@@ -174,11 +175,15 @@ export const ToolsPage: React.FC = () => {
       setIsTransferringFile(false);
       setTransferProgress(100);
       
-      setToast({
-        show: true,
-        message: `已加载文件: ${file.name}`,
-        type: 'success'
-      });
+      // 只在文件名变化时显示 Toast
+      if (lastLoadedFileName.current !== file.name) {
+        lastLoadedFileName.current = file.name;
+        setToast({
+          show: true,
+          message: `已加载文件: ${file.name}`,
+          type: 'success'
+        });
+      }
     } catch (error) {
       setIsTransferringFile(false);
       setTransferProgress(0);

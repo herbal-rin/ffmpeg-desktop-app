@@ -62,16 +62,16 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
   }
 
   return (
-    <div className={`grid grid-cols-2 gap-4 h-64 ${className}`}>
+    <div className={`grid grid-cols-2 gap-4 ${className}`} style={{ height: '480px' }}>
       {/* 左侧：原视频 */}
       <div className="bg-gray-100 rounded-lg overflow-hidden">
         <div className="h-full flex flex-col">
-          <div className="flex-1 flex items-center justify-center">
+          <div className="flex-1 flex items-center justify-center overflow-hidden">
             <video
               ref={videoRef}
               src={videoSrc}
               controls
-              className="max-w-full max-h-full"
+              className="w-full h-full object-contain"
               onLoadedMetadata={() => {
                 if (videoRef.current) {
                   videoRef.current.currentTime = 0;
@@ -101,7 +101,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
                   key={previewKey}
                   src={previewUrl}
                   alt="GIF 预览"
-                  className="max-w-full max-h-full object-contain"
+                  className="w-full h-full object-contain"
                 />
               ) : (
                 <video
@@ -109,7 +109,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
                   key={previewKey}
                   src={previewUrl}
                   controls
-                  className="max-w-full max-h-full"
+                  className="w-full h-full object-contain"
                   onLoadedMetadata={() => {
                     if (previewRef.current) {
                       previewRef.current.currentTime = 0;
