@@ -155,7 +155,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
 
       {/* 可视化时间轴 */}
       <div className="relative" ref={sliderContainerRef}>
-        <div className="h-8 bg-gray-200 rounded-lg flex items-center px-2">
+        <div className="h-8 bg-gray-200 rounded-lg flex items-center px-3">
           {/* 时间轴背景（深灰色细线，左右留空隙） */}
           <div className="flex-1 h-1 bg-gray-300 rounded relative">
             {/* 选择范围（蓝色进度条） */}
