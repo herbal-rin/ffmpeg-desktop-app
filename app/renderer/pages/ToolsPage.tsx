@@ -266,7 +266,9 @@ export const ToolsPage: React.FC = () => {
     if (!selectedFile || !outputDir) return;
 
     try {
+      console.log('📤 准备导出', { type, tempPath: selectedFile.tempPath, outputDir });
       if (type === 'trim') {
+        console.log('📤 调用 trim/export', { range: timeRange, mode: trimMode, container: trimContainer });
         await window.api.invoke('tools/trim/export', {
           input: selectedFile.tempPath,
           range: timeRange,
@@ -303,18 +305,23 @@ export const ToolsPage: React.FC = () => {
         });
       }
 
+      console.log('✅ 导出成功');
       setToast({
         show: true,
         message: '文件导出成功',
         type: 'success'
       });
     } catch (error) {
+      console.error('❌ 导出失败', error);
+      const errorMsg = error instanceof Error ? error.message : String(error);
+      console.error('错误详情:', errorMsg);
       setToast({
         show: true,
         message: '文件导出失败',
         type: 'error',
-        details: error instanceof Error ? error.message : String(error)
+        details: errorMsg
       });
+      throw error; // 重新抛出以便上层捕获
     }
   };
 
@@ -356,17 +363,46 @@ export const ToolsPage: React.FC = () => {
 
   // 处理预览按钮点击
   const handlePreview = async () => {
-    if (!selectedFile) return;
-    if (activeTab === 'trim') {
-      await _handlePreviewDebounced('trim');
-    } else if (activeTab === 'gif') {
-      await _handlePreviewDebounced('gif');
+    console.log('🔍 点击生成预览', { activeTab, selectedFile: !!selectedFile, outputDir: !!outputDir });
+    if (!selectedFile) {
+      console.warn('❌ 没有选择文件');
+      return;
+    }
+    try {
+      if (activeTab === 'trim') {
+        await _handlePreviewDebounced('trim');
+      } else if (activeTab === 'gif') {
+        await _handlePreviewDebounced('gif');
+      }
+    } catch (error) {
+      console.error('预览失败:', error);
     }
   };
 
   // 处理导出按钮点击
   const handleExportClick = async () => {
-    await handleExport(activeTab);
+    console.log('🔍 点击导出文件', { 
+      activeTab, 
+      selectedFile: !!selectedFile, 
+      outputDir, 
+      timeRange,
+      trimMode,
+      trimContainer,
+      trimAudio
+    });
+    if (!selectedFile) {
+      console.warn('❌ 没有选择文件');
+      return;
+    }
+    if (!outputDir) {
+      console.warn('❌ 没有设置输出目录');
+      return;
+    }
+    try {
+      await handleExport(activeTab);
+    } catch (error) {
+      console.error('导出失败:', error);
+    }
   };
 
   return (

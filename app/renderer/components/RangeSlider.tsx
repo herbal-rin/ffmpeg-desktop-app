@@ -174,8 +174,13 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           
           {/* 开始时间拖拽点 */}
           <div
-            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer transform -translate-y-1/2 top-1/2 hover:bg-blue-700"
-            style={{ left: `${(timeRange.startSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
+            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
+            style={{ 
+              left: `calc(${(timeRange.startSec / duration) * 100}% - 8px)`, 
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 10
+            }}
               onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
                 const container = sliderContainerRef.current;
@@ -199,8 +204,13 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           
           {/* 结束时间拖拽点 */}
           <div
-            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer transform -translate-y-1/2 top-1/2 hover:bg-blue-700"
-            style={{ left: `${(timeRange.endSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
+            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
+            style={{ 
+              left: `calc(${(timeRange.endSec / duration) * 100}% - 8px)`, 
+              top: '50%',
+              transform: 'translateY(-50%)',
+              zIndex: 10
+            }}
               onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
                 const container = sliderContainerRef.current;
