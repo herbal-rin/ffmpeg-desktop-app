@@ -114,6 +114,7 @@ export const ToolsPage: React.FC = () => {
 
   // 处理文件选择
   const handleFileSelect = async (files: FileList) => {
+    console.log('📁 handleFileSelect 被调用，文件数量:', files.length);
     if (files.length === 0) return;
 
     const file = files[0];
@@ -121,6 +122,8 @@ export const ToolsPage: React.FC = () => {
       showToast('请选择文件', 'error');
       return;
     }
+    
+    console.log('📄 处理文件:', file.name);
     
     try {
       setIsTransferringFile(true);
@@ -177,12 +180,16 @@ export const ToolsPage: React.FC = () => {
       
       // 只在文件名变化时显示 Toast
       if (lastLoadedFileName.current !== file.name) {
+        console.log('显示文件加载 Toast:', file.name);
+        console.log('上一次加载的文件:', lastLoadedFileName.current);
         lastLoadedFileName.current = file.name;
         setToast({
           show: true,
           message: `已加载文件: ${file.name}`,
           type: 'success'
         });
+      } else {
+        console.log('文件已加载，跳过 Toast');
       }
     } catch (error) {
       setIsTransferringFile(false);

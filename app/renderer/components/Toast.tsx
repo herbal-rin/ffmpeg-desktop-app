@@ -26,7 +26,7 @@ interface ToastState {
 /**
  * Toast 组件
  */
-export function Toast({ message, type = 'info', duration = 3000, onClose, details }: ToastProps) {
+export function Toast({ message, type = 'info', duration = 3000, onClose, details, show = false }: ToastProps) {
   const [state, setState] = React.useState<ToastState>({
     visible: false,
     message: '',
@@ -35,8 +35,16 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, detail
     showDetails: false
   });
 
+  const lastMessageRef = React.useRef<string>('');
+  const timeoutRef = React.useRef<NodeJS.Timeout>();
+
   // 显示 Toast
   const showToast = React.useCallback((msg: string, toastType: 'success' | 'error' | 'warning' | 'info', errorDetails?: string) => {
+    // 清除之前的定时器
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+    }
+
     setState({
       visible: true,
       message: msg,
@@ -46,7 +54,7 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, detail
     });
 
     // 自动隐藏
-    setTimeout(() => {
+    timeoutRef.current = setTimeout(() => {
       setState(prev => ({ ...prev, visible: false }));
       onClose?.();
     }, duration);
@@ -60,12 +68,23 @@ export function Toast({ message, type = 'info', duration = 3000, onClose, detail
     };
   }, [showToast]);
 
-  // 处理外部消息
+  // 清除定时器
   React.useEffect(() => {
-    if (message) {
+    return () => {
+      if (timeoutRef.current) {
+        clearTimeout(timeoutRef.current);
+      }
+    };
+  }, []);
+
+  // 处理外部消息 - 只有当 show 为 true 且 message 变化时才显示
+  React.useEffect(() => {
+    if (show && message && message !== lastMessageRef.current) {
+      console.log('Toast 显示:', message, '上一次:', lastMessageRef.current);
+      lastMessageRef.current = message;
       showToast(message, type, details);
     }
-  }, [message, type, details, showToast]);
+  }, [show, message, type, details, showToast]);
 
   if (!state.visible) {
     return null;
