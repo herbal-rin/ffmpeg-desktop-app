@@ -93,9 +93,18 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
         setTimeRange(newRange);
       }
     } else {
-      const minEnd = Math.min(duration, timeRange.startSec + minInterval);
-      const clampedEnd = Math.max(value, minEnd);
+      // 确保结束时间在有效范围内：startSec + 0.5 <= endSec <= duration
+      const minEnd = timeRange.startSec + minInterval;
+      const clampedEnd = Math.max(minEnd, Math.min(value, duration));
       const newRange = { startSec: timeRange.startSec, endSec: clampedEnd };
+      
+      console.log('🔧 更新结束时间', { 
+        originalValue: value, 
+        clampedEnd, 
+        duration, 
+        minEnd,
+        newRange 
+      });
       
       if (clampedEnd > timeRange.startSec) {
         setTimeRange(newRange);
