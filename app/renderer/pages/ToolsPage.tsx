@@ -426,7 +426,7 @@ export const ToolsPage: React.FC = () => {
             <input
               id="tools-file-input"
               type="file"
-              accept="video/*"
+              accept="video/*,.mkv,.avi,.flv,.webm,.m4v,.3gp"
               onChange={handleFileInput}
               className="hidden"
             />
@@ -434,8 +434,42 @@ export const ToolsPage: React.FC = () => {
             <p className="text-lg text-gray-600 mb-2">
               {selectedFile ? `已选择: ${selectedFile.file.name}` : '点击或拖拽选择视频文件'}
             </p>
+            {isTransferringFile && (
+              <div className="mt-2">
+                <div className="h-1.5 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-blue-500 transition-all duration-300"
+                    style={{ width: `${transferProgress}%` }}
+                  />
+                </div>
+                <div className="text-xs text-gray-500 mt-1">
+                  上传中... {transferProgress}%
+                </div>
+              </div>
+            )}
             <p className="text-sm text-gray-500">支持 MP4、MKV、AVI、MOV 等格式</p>
           </div>
+          {/* 清空按钮 */}
+          {selectedFile && !isTransferringFile && (
+            <div className="mt-2 text-right">
+              <button
+                onClick={async (e) => {
+                  e.stopPropagation();
+                  if (selectedFile?.tempPath) {
+                    try {
+                      await window.api.invoke('file/cleanup-temp', { tempPath: selectedFile.tempPath });
+                    } catch (error) {
+                      console.warn('清理临时文件失败:', error);
+                    }
+                  }
+                  setSelectedFile(null);
+                }}
+                className="text-sm text-red-500 hover:text-red-700 transition-colors"
+              >
+                清空已选择的文件
+              </button>
+            </div>
+          )}
         </div>
 
         {/* 输出目录选择 */}
