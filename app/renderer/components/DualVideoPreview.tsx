@@ -45,7 +45,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
           <div className="flex-1 flex items-center justify-center">
             <video
               ref={videoRef}
-              src={selectedFile.tempPath ? `file://${selectedFile.tempPath}` : undefined}
+              src={selectedFile.dataUrl}
               controls
               className="max-w-full max-h-full"
               onLoadedMetadata={() => {
@@ -75,7 +75,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
               isGifPreview ? (
                 <img
                   key={previewKey}
-                  src={`file://${previewPath}`}
+                  src={previewPath.startsWith('file://') ? previewPath : `file://${previewPath}`}
                   alt="GIF 预览"
                   className="max-w-full max-h-full object-contain"
                 />
@@ -83,7 +83,7 @@ export const DualVideoPreview: React.FC<DualVideoPreviewProps> = ({ className = 
                 <video
                   ref={previewRef}
                   key={previewKey}
-                  src={`file://${previewPath}`}
+                  src={previewPath.startsWith('file://') ? previewPath : `file://${previewPath}`}
                   controls
                   className="max-w-full max-h-full"
                   onLoadedMetadata={() => {

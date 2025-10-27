@@ -25,7 +25,7 @@ function createMainWindow(): void {
       contextIsolation: true,
       sandbox: true,
       preload: join(__dirname, 'preload.js'),
-      webSecurity: true
+      webSecurity: false // 允许加载本地文件用于视频预览
     },
     titleBarStyle: process.platform === 'darwin' ? 'hiddenInset' : 'default',
     show: false, // 先不显示，等加载完成
