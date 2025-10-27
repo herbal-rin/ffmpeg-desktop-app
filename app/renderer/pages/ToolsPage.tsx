@@ -28,6 +28,8 @@ export const ToolsPage: React.FC = () => {
     audioCodec,
     audioBitrate,
     outputDir,
+    isPreviewing,
+    previewProgress,
     setSelectedFile,
     setPreviewPath,
     setIsPreviewing,
@@ -45,6 +47,9 @@ export const ToolsPage: React.FC = () => {
   const [isTransferringFile, setIsTransferringFile] = useState(false);
   const [transferProgress, setTransferProgress] = useState(0);
   const lastLoadedFileName = React.useRef<string>('');
+  
+  // 添加选项卡状态
+  const [activeTab, setActiveTab] = useState<'trim' | 'gif' | 'audio'>('trim');
 
   // 显示提示
   const showToast = (message: string, type: 'info' | 'error' | 'success' | 'warning') => {
@@ -349,6 +354,21 @@ export const ToolsPage: React.FC = () => {
     }
   };
 
+  // 处理预览按钮点击
+  const handlePreview = async () => {
+    if (!selectedFile) return;
+    if (activeTab === 'trim') {
+      await _handlePreviewDebounced('trim');
+    } else if (activeTab === 'gif') {
+      await _handlePreviewDebounced('gif');
+    }
+  };
+
+  // 处理导出按钮点击
+  const handleExportClick = async () => {
+    await handleExport(activeTab);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
@@ -407,21 +427,131 @@ export const ToolsPage: React.FC = () => {
           <RangeSlider />
         </div>
 
-        {/* 工具面板 */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-          <TrimPanel />
-          <GifPanel />
-          <AudioExtractPanel />
+        {/* 选项卡切换按钮 */}
+        <div className="mb-6">
+          <div className="inline-flex rounded-lg border border-gray-300 bg-white p-1">
+            <button
+              onClick={() => setActiveTab('trim')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'trim' 
+                  ? 'bg-blue-500 text-white shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              视频裁剪
+            </button>
+            <button
+              onClick={() => setActiveTab('gif')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'gif' 
+                  ? 'bg-blue-500 text-white shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              GIF 制作
+            </button>
+            <button
+              onClick={() => setActiveTab('audio')}
+              className={`px-4 py-2 rounded-md font-medium transition-colors ${
+                activeTab === 'audio' 
+                  ? 'bg-blue-500 text-white shadow-sm' 
+                  : 'text-gray-600 hover:text-gray-900 hover:bg-gray-100'
+              }`}
+            >
+              音频提取
+            </button>
+          </div>
         </div>
 
-        {/* 预览操作栏 */}
+        {/* 操作按钮1（在选项卡下） */}
+        {selectedFile && (
+          <div className="mb-6 flex gap-3">
+            {activeTab !== 'audio' && (
+              <button
+                onClick={handlePreview}
+                disabled={!outputDir || isPreviewing}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  !outputDir || isPreviewing
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {isPreviewing ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    生成预览中... {Math.round(previewProgress)}%
+                  </div>
+                ) : (
+                  '生成预览'
+                )}
+              </button>
+            )}
+              <button
+                onClick={handleExportClick}
+                disabled={!outputDir || isPreviewing}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  !outputDir || isPreviewing
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                }`}
+              >
+              导出文件
+              </button>
+          </div>
+        )}
+
+        {/* 工具面板（根据选项卡显示对应的面板） */}
         <div className="mb-6">
-          <PreviewBar
-            onPreview={_handlePreviewDebounced}
-            onExport={handleExport}
-            onCancel={handleCancel}
-          />
+          {activeTab === 'trim' && <TrimPanel />}
+          {activeTab === 'gif' && <GifPanel />}
+          {activeTab === 'audio' && <AudioExtractPanel />}
         </div>
+
+        {/* 操作按钮2（在工具面板下） */}
+        {selectedFile && (
+          <div className="mb-6 flex gap-3">
+            {activeTab !== 'audio' && (
+              <button
+                onClick={handlePreview}
+                disabled={!outputDir || isPreviewing}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  !outputDir || isPreviewing
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+              >
+                {isPreviewing ? (
+                  <div className="flex items-center justify-center">
+                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                    生成预览中... {Math.round(previewProgress)}%
+                  </div>
+                ) : (
+                  '生成预览'
+                )}
+              </button>
+            )}
+              <button
+                onClick={handleExportClick}
+                disabled={!outputDir || isPreviewing}
+                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                  !outputDir || isPreviewing
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-green-500 text-white hover:bg-green-600'
+                }`}
+              >
+              导出文件
+              </button>
+          </div>
+        )}
+
+        {/* 输出目录提示 */}
+        {!outputDir && (
+          <div className="mb-6 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <div className="text-sm text-yellow-800">
+              ⚠️ 请先设置输出目录
+            </div>
+          </div>
+        )}
 
         {/* Toast 通知 */}
         <Toast
