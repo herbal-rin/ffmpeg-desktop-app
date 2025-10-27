@@ -84,10 +84,22 @@ async function tryLosslessThenPrecise(
   return new Promise(async (resolve, reject) => {
     try {
       // 首先尝试无损快剪
+      logger!.info('开始执行无损快剪', { 
+        args: args.join(' '),
+        timeRange: { startSec: request.range.startSec, endSec: request.range.endSec }
+      });
+      
       const success = await executeFFmpegCommand(args);
       
       if (success) {
-        // 无损快剪成功
+        // 无损快剪成功，检查输出文件时长
+        const outputProbe = await ffprobeService!.probe(tempPath);
+        logger!.info('无损快剪完成，输出文件信息', { 
+          outputPath: tempPath,
+          duration: outputProbe.durationSec,
+          expectedDuration: request.range.endSec - request.range.startSec
+        });
+        
         fs.renameSync(tempPath, outputPath);
         logger!.info('无损快剪导出完成', { outputPath });
         resolve({ output: outputPath });
