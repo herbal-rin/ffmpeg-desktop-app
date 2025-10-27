@@ -47,6 +47,7 @@ export const ToolsPage: React.FC = () => {
   const [isTransferringFile, setIsTransferringFile] = useState(false);
   const [transferProgress, setTransferProgress] = useState(0);
   const lastLoadedFileName = React.useRef<string>('');
+  const [outputFileName, setOutputFileName] = useState('');
   
   // 添加选项卡状态
   const [activeTab, setActiveTab] = useState<'trim' | 'gif' | 'audio'>('trim');
@@ -263,10 +264,41 @@ export const ToolsPage: React.FC = () => {
 
   // 导出文件
   const handleExport = async (type: 'trim' | 'gif' | 'audio') => {
-    if (!selectedFile || !outputDir) return;
+    if (!selectedFile || !outputDir) {
+      console.warn('❌ 缺少必要参数', { hasSelectedFile: !!selectedFile, hasOutputDir: !!outputDir });
+      return;
+    }
 
     try {
-      console.log('📤 准备导出', { type, tempPath: selectedFile.tempPath, outputDir });
+      // 生成输出文件名
+      const getOutputName = () => {
+        if (outputFileName.trim()) {
+          return outputFileName.trim();
+        }
+        
+        // 默认文件名基于原文件名和时间范围
+        const baseName = selectedFile.file.name.replace(/\.[^/.]+$/, '');
+        const start = Math.floor(timeRange.startSec);
+        const end = Math.floor(timeRange.endSec);
+        
+        if (type === 'trim') {
+          return `${baseName}_${start}s-${end}s.${trimContainer}`;
+        } else if (type === 'gif') {
+          return `${baseName}_${start}s-${end}s.gif`;
+        } else {
+          // 音频
+          const ext = audioMode === 'copy' ? 'm4a' : 
+            audioCodec === 'libmp3lame' ? 'mp3' :
+            audioCodec === 'aac' ? 'aac' :
+            audioCodec === 'flac' ? 'flac' :
+            audioCodec === 'libopus' ? 'opus' : 'm4a';
+          return `${baseName}_${start}s-${end}s.${ext}`;
+        }
+      };
+
+      const finalOutputName = getOutputName();
+      
+      console.log('📤 准备导出', { type, tempPath: selectedFile.tempPath, outputDir, outputName: finalOutputName });
       if (type === 'trim') {
         console.log('📤 调用 trim/export', { range: timeRange, mode: trimMode, container: trimContainer });
         // 转换 audio 参数为 AudioPolicy 对象
@@ -287,7 +319,7 @@ export const ToolsPage: React.FC = () => {
           videoCodec: trimMode === 'precise' ? trimVideoCodec : trimVideoCodec, // 总是提供 videoCodec
           audio: audioPolicy,
           outputDir,
-          outputName: `trimmed_${Date.now()}.${trimContainer}`
+          outputName: finalOutputName
         });
       } else if (type === 'gif') {
         await window.api.invoke('tools/gif/export', {
@@ -297,7 +329,7 @@ export const ToolsPage: React.FC = () => {
           maxWidth: gifMaxWidth,
           dithering: gifDithering,
           outputDir,
-          outputName: `gif_${Date.now()}.gif`
+          outputName: finalOutputName
         });
       } else if (type === 'audio') {
         await window.api.invoke('tools/audio/extract', {
@@ -307,11 +339,7 @@ export const ToolsPage: React.FC = () => {
           codec: audioMode === 'encode' ? audioCodec : undefined,
           bitrateK: audioMode === 'encode' && audioCodec !== 'flac' ? audioBitrate : undefined,
           outputDir,
-          outputName: `audio_${Date.now()}.${audioMode === 'copy' ? 'm4a' : 
-            audioCodec === 'libmp3lame' ? 'mp3' :
-            audioCodec === 'aac' ? 'aac' :
-            audioCodec === 'flac' ? 'flac' :
-            audioCodec === 'libopus' ? 'opus' : 'm4a'}`
+          outputName: finalOutputName
         });
       }
 
@@ -373,7 +401,7 @@ export const ToolsPage: React.FC = () => {
 
   // 处理预览按钮点击
   const handlePreview = async () => {
-    console.log('🔍 点击生成预览', { activeTab, selectedFile: !!selectedFile, outputDir: !!outputDir });
+    console.log('🔍 点击生成预览', { activeTab, selectedFile: !!selectedFile, timeRange });
     if (!selectedFile) {
       console.warn('❌ 没有选择文件');
       return;
@@ -549,9 +577,9 @@ export const ToolsPage: React.FC = () => {
             {activeTab !== 'audio' && (
               <button
                 onClick={handlePreview}
-                disabled={!outputDir || isPreviewing}
+                disabled={isPreviewing}
                 className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  !outputDir || isPreviewing
+                  isPreviewing
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
@@ -593,9 +621,9 @@ export const ToolsPage: React.FC = () => {
             {activeTab !== 'audio' && (
               <button
                 onClick={handlePreview}
-                disabled={!outputDir || isPreviewing}
+                disabled={isPreviewing}
                 className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  !outputDir || isPreviewing
+                  isPreviewing
                     ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
