@@ -184,13 +184,22 @@ export function App() {
 
       {/* 页面内容 */}
       <main>
-        <div style={{ display: currentPage === 'compress' ? 'block' : 'none' }}>
+        <div style={{ 
+          display: currentPage === 'compress' ? 'block' : 'none',
+          pointerEvents: currentPage === 'compress' ? 'auto' : 'none'
+        }}>
           <CompressPage />
         </div>
-        <div style={{ display: currentPage === 'tools' ? 'block' : 'none' }}>
+        <div style={{ 
+          display: currentPage === 'tools' ? 'block' : 'none',
+          pointerEvents: currentPage === 'tools' ? 'auto' : 'none'
+        }}>
           <ToolsPage />
         </div>
-        <div style={{ display: currentPage === 'settings' ? 'block' : 'none' }}>
+        <div style={{ 
+          display: currentPage === 'settings' ? 'block' : 'none',
+          pointerEvents: currentPage === 'settings' ? 'auto' : 'none'
+        }}>
           <SettingsPage />
         </div>
       </main>

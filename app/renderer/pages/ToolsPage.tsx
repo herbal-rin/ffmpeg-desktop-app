@@ -211,6 +211,7 @@ export const ToolsPage: React.FC = () => {
 
   const handleDrop = (e: React.DragEvent) => {
     e.preventDefault();
+    e.stopPropagation(); // 阻止事件冒泡到其他页面
     const files = e.dataTransfer.files;
     handleFileSelect(files);
   };
@@ -363,10 +364,10 @@ export const ToolsPage: React.FC = () => {
             className="border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-gray-400 transition-colors cursor-pointer"
             onDragOver={handleDragOver}
             onDrop={handleDrop}
-            onClick={() => document.getElementById('file-input')?.click()}
+            onClick={() => document.getElementById('tools-file-input')?.click()}
           >
             <input
-              id="file-input"
+              id="tools-file-input"
               type="file"
               accept="video/*"
               onChange={handleFileInput}
