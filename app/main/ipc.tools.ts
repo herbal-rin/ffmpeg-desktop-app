@@ -188,6 +188,9 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     request.audio
   );
 
+  // 添加容器格式参数
+  const format = request.container === 'mp4' ? 'mp4' : 'matroska';
+  
   const args = [
     '-y',
     '-ss', request.range.startSec.toString(),
@@ -196,6 +199,7 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     '-to', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
     '-force_key_frames', 'expr:gte(t,0)',
+    '-f', format, // 显式指定容器格式
     tempPath
   ];
 
@@ -344,6 +348,9 @@ export function setupToolsIPC() {
 
       if (request.mode === 'lossless' && isLosslessSuitable) {
         // 无损快剪：-ss/-to 前置以加速，添加 -c copy、-map 0、-avoid_negative_ts make_zero
+        // 添加容器格式参数
+        const format = request.container === 'mp4' ? 'mp4' : 'matroska';
+        
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
@@ -352,6 +359,7 @@ export function setupToolsIPC() {
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
+          '-f', format, // 显式指定容器格式
           tempPath
         ];
       } else {
@@ -367,6 +375,9 @@ export function setupToolsIPC() {
           request.audio
         );
 
+        // 添加容器格式参数
+        const format = request.container === 'mp4' ? 'mp4' : 'matroska';
+        
         args = [
           '-y',
           '-ss', request.range.startSec.toString(),
@@ -375,6 +386,7 @@ export function setupToolsIPC() {
           '-to', (request.range.endSec - request.range.startSec).toString(), // 使用持续时间
           ...videoArgs,
           '-force_key_frames', 'expr:gte(t,0)', // 强制关键帧
+          '-f', format, // 显式指定容器格式
           tempPath
         ];
 
