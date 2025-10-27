@@ -2,7 +2,7 @@
  * 工具页面主组件
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { useToolsStore } from '../store/useToolsStore';
 import { DualVideoPreview } from '../components/DualVideoPreview';
 import { RangeSlider } from '../components/RangeSlider';
@@ -41,6 +41,9 @@ export const ToolsPage: React.FC = () => {
     type: 'success' | 'error' | 'info';
     details?: string;
   }>({ show: false, message: '', type: 'info' });
+
+  const [isTransferringFile, setIsTransferringFile] = useState(false);
+  const [transferProgress, setTransferProgress] = useState(0);
 
   // 显示提示
   const showToast = (message: string, type: 'info' | 'error' | 'success' | 'warning') => {
@@ -119,12 +122,44 @@ export const ToolsPage: React.FC = () => {
     }
     
     try {
-      // 保存文件到临时目录
-      const arrayBuffer = await file.arrayBuffer();
-      const { tempPath } = await window.api.invoke('file/save-temp', {
-        fileData: Array.from(new Uint8Array(arrayBuffer)),
-        fileName: file.name
-      });
+      setIsTransferringFile(true);
+      setTransferProgress(0);
+      
+      // 使用分块传输避免大文件数组长度限制
+      const fileBuffer = await file.arrayBuffer();
+      const uint8Array = new Uint8Array(fileBuffer);
+      
+      const maxChunkSize = 10 * 1024 * 1024; // 10MB chunks
+      let tempPath = '';
+      
+      for (let offset = 0; offset < uint8Array.length; offset += maxChunkSize) {
+        const end = Math.min(offset + maxChunkSize, uint8Array.length);
+        const chunk = uint8Array.slice(offset, end);
+        
+        // 使用循环转换为数组，避免 Array.from 的大数组限制
+        const chunkArray: number[] = new Array(chunk.length);
+        for (let i = 0; i < chunk.length; i++) {
+          chunkArray[i] = chunk[i];
+        }
+        
+        const isFirstChunk = offset === 0;
+        const isLastChunk = end >= uint8Array.length;
+        
+        const result = await window.api.invoke('file/save-temp-chunk', {
+          fileData: chunkArray,
+          fileName: file.name,
+          isFirstChunk,
+          isLastChunk
+        });
+        
+        if (isFirstChunk || !tempPath) {
+          tempPath = result.tempPath;
+        }
+        
+        // 更新传输进度
+        const progress = Math.round((end / uint8Array.length) * 100);
+        setTransferProgress(progress);
+      }
 
       // 获取媒体信息
       const probeResult = await window.api.invoke('ffmpeg/probe', { input: tempPath });
@@ -136,12 +171,18 @@ export const ToolsPage: React.FC = () => {
       };
 
       setSelectedFile(fileInfo);
+      setIsTransferringFile(false);
+      setTransferProgress(100);
+      
       setToast({
         show: true,
         message: `已加载文件: ${file.name}`,
         type: 'success'
       });
     } catch (error) {
+      setIsTransferringFile(false);
+      setTransferProgress(0);
+      
       setToast({
         show: true,
         message: '文件加载失败',
