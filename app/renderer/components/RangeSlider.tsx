@@ -2,7 +2,7 @@
  * 时间范围选择器组件
  */
 
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useToolsStore } from '../store/useToolsStore';
 import { toHMSms, parseHMSms, validateTimeRange } from '../../shared/time';
 
@@ -20,6 +20,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
   const [startTimeStr, setStartTimeStr] = useState('');
   const [endTimeStr, setEndTimeStr] = useState('');
   const [duration, setDuration] = useState(0);
+  const sliderContainerRef = useRef<HTMLDivElement>(null);
 
   // 更新持续时间
   useEffect(() => {
@@ -153,7 +154,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
       </div>
 
       {/* 可视化时间轴 */}
-      <div className="relative">
+      <div className="relative" ref={sliderContainerRef}>
         <div className="h-8 bg-gray-200 rounded-lg relative">
           {/* 时间轴背景 */}
           <div className="absolute inset-0 flex items-center">
@@ -177,8 +178,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
             style={{ left: `${(timeRange.startSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
               onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
-                const rect = (e.currentTarget as HTMLElement)?.parentElement?.getBoundingClientRect();
-                if (rect) {
+                const container = sliderContainerRef.current;
+                if (container) {
+                  const rect = container.getBoundingClientRect();
                   const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                   const newTime = percentage * duration;
                   handleSliderChange('start', newTime);
@@ -201,8 +203,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
             style={{ left: `${(timeRange.endSec / duration) * 100}%`, transform: 'translateX(-50%) translateY(-50%)' }}
               onMouseDown={(_e) => {
               const handleMouseMove = (e: MouseEvent) => {
-                const rect = (e.currentTarget as HTMLElement)?.parentElement?.getBoundingClientRect();
-                if (rect) {
+                const container = sliderContainerRef.current;
+                if (container) {
+                  const rect = container.getBoundingClientRect();
                   const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
                   const newTime = percentage * duration;
                   handleSliderChange('end', newTime);
