@@ -153,84 +153,87 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
         </div>
       </div>
 
-      {/* 可视化时间轴 InputArea*/}
-      <div className="relative" ref={sliderContainerRef} style={{ overflow: 'hidden', padding: '8px 0' }}>
-        <div className="h-8 bg-gray-200 rounded-lg relative">
-          {/* 时间轴背景 */}
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full h-1 bg-gray-300 rounded"></div>
+      {/* 可视化时间轴 */}
+      <div className="relative" ref={sliderContainerRef}>
+        <div className="h-8 bg-gray-200 rounded-lg flex items-center px-2">
+          {/* 时间轴背景（深灰色细线，左右留空隙） */}
+          <div className="flex-1 h-1 bg-gray-300 rounded relative">
+            {/* 选择范围（蓝色进度条） */}
+            <div
+              className="absolute h-1 bg-blue-500 rounded"
+              style={{
+                left: `${(timeRange.startSec / duration) * 100}%`,
+                width: `${rangePercentage}%`,
+                top: 0
+              }}
+            ></div>
+            
+            {/* 开始时间拖拽点 */}
+            <div
+              className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
+              style={{ 
+                left: `${(timeRange.startSec / duration) * 100}%`,
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10
+              }}
+              onMouseDown={(_e) => {
+                const handleMouseMove = (e: MouseEvent) => {
+                  const container = sliderContainerRef.current;
+                  if (container) {
+                    const sliderBar = container.querySelector('.flex-1') as HTMLElement;
+                    if (sliderBar) {
+                      const rect = sliderBar.getBoundingClientRect();
+                      const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      const newTime = percentage * duration;
+                      handleSliderChange('start', newTime);
+                    }
+                  }
+                };
+                
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+            ></div>
+            
+            {/* 结束时间拖拽点 */}
+            <div
+              className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
+              style={{ 
+                left: `${(timeRange.endSec / duration) * 100}%`,
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+                zIndex: 10
+              }}
+              onMouseDown={(_e) => {
+                const handleMouseMove = (e: MouseEvent) => {
+                  const container = sliderContainerRef.current;
+                  if (container) {
+                    const sliderBar = container.querySelector('.flex-1') as HTMLElement;
+                    if (sliderBar) {
+                      const rect = sliderBar.getBoundingClientRect();
+                      const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+                      const newTime = percentage * duration;
+                      handleSliderChange('end', newTime);
+                    }
+                  }
+                };
+                
+                const handleMouseUp = () => {
+                  document.removeEventListener('mousemove', handleMouseMove);
+                  document.removeEventListener('mouseup', handleMouseUp);
+                };
+                
+                document.addEventListener('mousemove', handleMouseMove);
+                document.addEventListener('mouseup', handleMouseUp);
+              }}
+            ></div>
           </div>
-          
-          {/* 选择范围 */}
-          <div
-            className="absolute h-1 bg-blue-500 rounded"
-            style={{
-              left: `calc(8px + ${(timeRange.startSec / duration) * 100}% * (100% - 16px) / 100%)`,
-              width: `${rangePercentage}%`,
-              top: '50%',
-              transform: 'translateY(-50%)'
-            }}
-          ></div>
-          
-          {/* 开始时间拖拽点 */}
-          <div
-            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
-            style={{ 
-              left: `calc(${(timeRange.startSec / duration) * 100}% + 8px - 8px)`, 
-              top: '50%',
-              transform: 'translate(-50%, -50%)',
-              zIndex: 10
-            }}
-              onMouseDown={(_e) => {
-              const handleMouseMove = (e: MouseEvent) => {
-                const container = sliderContainerRef.current;
-                if (container) {
-                  const rect = container.getBoundingClientRect();
-                  const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                  const newTime = percentage * duration;
-                  handleSliderChange('start', newTime);
-                }
-              };
-              
-              const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-              };
-              
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
-            }}
-          ></div>
-          
-          {/* 结束时间拖拽点 */}
-          <div
-            className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
-            style={{ 
-              left: `calc(${(timeRange.endSec / duration) * 100}% - 8px)`, 
-              top: '50%',
-              transform: 'translateY(-50%)',
-              zIndex: 10
-            }}
-              onMouseDown={(_e) => {
-              const handleMouseMove = (e: MouseEvent) => {
-                const container = sliderContainerRef.current;
-                if (container) {
-                  const rect = container.getBoundingClientRect();
-                  const percentage = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
-                  const newTime = percentage * duration;
-                  handleSliderChange('end', newTime);
-                }
-              };
-              
-              const handleMouseUp = () => {
-                document.removeEventListener('mousemove', handleMouseMove);
-                document.removeEventListener('mouseup', handleMouseUp);
-              };
-              
-              document.addEventListener('mousemove', handleMouseMove);
-              document.addEventListener('mouseup', handleMouseUp);
-            }}
-          ></div>
         </div>
         
         {/* 时间刻度 */}
