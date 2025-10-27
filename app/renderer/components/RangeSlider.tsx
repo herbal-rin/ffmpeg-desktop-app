@@ -28,12 +28,11 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
       const durationSec = selectedFile.probeResult.durationSec;
       setDuration(durationSec);
       
-      // 设置默认时间范围
-      const defaultEnd = Math.min(10, durationSec);
-      const newRange = { startSec: 0, endSec: defaultEnd };
+      // 设置默认时间范围（使用视频总长度）
+      const newRange = { startSec: 0, endSec: durationSec };
       setTimeRange(newRange);
       setStartTimeStr(toHMSms(0));
-      setEndTimeStr(toHMSms(defaultEnd));
+      setEndTimeStr(toHMSms(durationSec));
     }
   }, [selectedFile, setTimeRange]);
 
