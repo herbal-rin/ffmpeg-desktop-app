@@ -153,8 +153,8 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
         </div>
       </div>
 
-      {/* 可视化时间轴 */}
-      <div className="relative" ref={sliderContainerRef}>
+      {/* 可视化时间轴 InputArea*/}
+      <div className="relative" ref={sliderContainerRef} style={{ overflow: 'hidden', padding: '8px 0' }}>
         <div className="h-8 bg-gray-200 rounded-lg relative">
           {/* 时间轴背景 */}
           <div className="absolute inset-0 flex items-center">
@@ -165,7 +165,7 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           <div
             className="absolute h-1 bg-blue-500 rounded"
             style={{
-              left: `${(timeRange.startSec / duration) * 100}%`,
+              left: `calc(8px + ${(timeRange.startSec / duration) * 100}% * (100% - 16px) / 100%)`,
               width: `${rangePercentage}%`,
               top: '50%',
               transform: 'translateY(-50%)'
@@ -176,9 +176,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
           <div
             className="absolute w-4 h-4 bg-blue-600 rounded-full cursor-pointer hover:bg-blue-700"
             style={{ 
-              left: `calc(${(timeRange.startSec / duration) * 100}% - 8px)`, 
+              left: `calc(${(timeRange.startSec / duration) * 100}% + 8px - 8px)`, 
               top: '50%',
-              transform: 'translateY(-50%)',
+              transform: 'translate(-50%, -50%)',
               zIndex: 10
             }}
               onMouseDown={(_e) => {

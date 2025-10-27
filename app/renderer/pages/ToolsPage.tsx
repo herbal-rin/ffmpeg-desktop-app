@@ -269,12 +269,13 @@ export const ToolsPage: React.FC = () => {
       console.log('📤 准备导出', { type, tempPath: selectedFile.tempPath, outputDir });
       if (type === 'trim') {
         console.log('📤 调用 trim/export', { range: timeRange, mode: trimMode, container: trimContainer });
+        // 无损快剪可能失败回退到精准剪，所以即使选择无损也要提供 videoCodec 作为备选
         await window.api.invoke('tools/trim/export', {
           input: selectedFile.tempPath,
           range: timeRange,
           mode: trimMode,
           container: trimContainer,
-          videoCodec: trimMode === 'precise' ? trimVideoCodec : undefined,
+          videoCodec: trimMode === 'precise' ? trimVideoCodec : trimVideoCodec, // 总是提供 videoCodec
           audio: trimAudio,
           outputDir,
           outputName: `trimmed_${Date.now()}.${trimContainer}`
