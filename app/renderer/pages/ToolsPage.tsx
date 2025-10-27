@@ -300,7 +300,14 @@ export const ToolsPage: React.FC = () => {
       
       console.log('📤 准备导出', { type, tempPath: selectedFile.tempPath, outputDir, outputName: finalOutputName });
       if (type === 'trim') {
-        console.log('📤 调用 trim/export', { range: timeRange, mode: trimMode, container: trimContainer });
+        console.log('📤 调用 trim/export', { 
+          range: timeRange, 
+          mode: trimMode, 
+          container: trimContainer,
+          startSec: timeRange.startSec,
+          endSec: timeRange.endSec,
+          duration: timeRange.endSec - timeRange.startSec
+        });
         // 转换 audio 参数为 AudioPolicy 对象
         const audioPolicy = trimAudio === 'copy' 
           ? { mode: 'copy' as const }
