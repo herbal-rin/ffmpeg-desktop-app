@@ -107,8 +107,9 @@ async function tryLosslessThenPrecise(
           durationRatio
         });
         
-        // 如果时长误差超过10%，说明无损快剪不精确，应该使用精准剪
-        if (durationRatio > 0.1) {
+        // 如果时长误差超过50%，说明无损快剪不精确，应该使用精准剪
+        // 注意：无损快剪基于关键帧，有一定偏差是正常的，不要设置过严格
+        if (durationRatio > 0.5) {
           logger!.warn('无损快剪时长不精确，切换为精准剪', {
             actualDuration,
             expectedDuration,
@@ -253,10 +254,13 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
   
   const args = [
     '-y',
-    '-ss', request.range.startSec.toString(),
     '-i', request.input,
+    '-ss', request.range.startSec.toString(),
     '-t', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
+    '-avoid_negative_ts', 'make_zero', // 避免负时间戳
+    '-vsync', '0', // 保持原始帧率，避免帧同步问题
+    '-async', '1', // 音频同步
     '-f', format, // 显式指定容器格式
     tempPath
   ];
@@ -405,18 +409,15 @@ export function setupToolsIPC() {
       let args: string[];
 
       if (request.mode === 'lossless' && isLosslessSuitable) {
-        // 无损快剪：-ss/-to 前置以加速，添加 -c copy、-map 0、-avoid_negative_ts make_zero
+        // 无损快剪：将 -ss/-to 放在 -i 后以确保精确剪切，使用 -c copy 避免重编码
         // 添加容器格式参数
         const format = request.container === 'mp4' ? 'mp4' : 'matroska';
         
-        // 计算持续时间
-        const duration = request.range.endSec - request.range.startSec;
-        
         args = [
           '-y',
+          '-i', request.input,
           '-ss', request.range.startSec.toString(),
-          '-i', request.input, // 直接使用原始路径（spawn 使用数组参数）
-          '-t', duration.toString(), // 使用 -t 指定持续时间（必须在 -i 之后）
+          '-to', request.range.endSec.toString(),
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
