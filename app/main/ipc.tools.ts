@@ -258,9 +258,6 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     '-ss', request.range.startSec.toString(),
     '-t', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
-    '-force_key_frames', '0', // 确保首帧是关键帧
-    '-reset_timestamps', '1', // 重置时间戳
-    '-fflags', '+genpts', // 生成PTS时间戳
     '-avoid_negative_ts', 'make_zero', // 避免负时间戳
     '-f', format, // 显式指定容器格式
     tempPath
@@ -410,54 +407,31 @@ export function setupToolsIPC() {
       let args: string[];
 
       if (request.mode === 'lossless' && isLosslessSuitable) {
-        // 无损快剪：将 -ss 放在 -i 前启用输入定位（快速跳跃到关键帧），确保输出从关键帧开始
-        // 使用 -c copy 避免重编码，移除会干扰帧结构的时间戳参数
-        // 添加容器格式参数
-        const format = request.container === 'mp4' ? 'mp4' : 'matroska';
-        
-        args = [
-          '-y',
-          '-ss', request.range.startSec.toString(),
-          '-i', request.input,
-          '-to', request.range.endSec.toString(),
-          '-c', 'copy',
-          '-map', '0', // 映射所有流
-          '-avoid_negative_ts', 'make_zero',
-          '-f', format, // 显式指定容器格式
-          tempPath
-        ];
+        // 如果 startSec 很小（< 1.5秒），输入定位会不够精确，直接使用精准剪
+        if (request.range.startSec < 1.5) {
+          logger!.info('开始时间太近，使用精准剪确保精确', { startSec: request.range.startSec });
+          args = buildPreciseTrimArgs(request, tempPath);
+        } else {
+          // 无损快剪：将 -ss 放在 -i 前启用输入定位（快速跳跃到关键帧），确保输出从关键帧开始
+          // 使用 -c copy 避免重编码，移除会干扰帧结构的时间戳参数
+          // 添加容器格式参数
+          const format = request.container === 'mp4' ? 'mp4' : 'matroska';
+          
+          args = [
+            '-y',
+            '-ss', request.range.startSec.toString(),
+            '-i', request.input,
+            '-to', request.range.endSec.toString(),
+            '-c', 'copy',
+            '-map', '0', // 映射所有流
+            '-avoid_negative_ts', 'make_zero',
+            '-f', format, // 显式指定容器格式
+            tempPath
+          ];
+        }
       } else {
-        // 精准剪（重编码）
-        if (!request.videoCodec) {
-          throw new Error('精准剪模式需要指定视频编码器');
-        }
-
-        const videoArgs = ArgsBuilder.buildVideoArgs(
-          request.videoCodec,
-          { name: 'balanced', args: [] },
-          request.container,
-          request.audio
-        );
-
-        // 添加容器格式参数
-        const format = request.container === 'mp4' ? 'mp4' : 'matroska';
-        
-        args = [
-          '-y',
-          '-ss', request.range.startSec.toString(),
-          '-accurate_seek', // 精准定位
-          '-i', request.input, // 直接使用原始路径
-          '-to', (request.range.endSec - request.range.startSec).toString(), // 使用持续时间
-          ...videoArgs,
-          '-force_key_frames', 'expr:gte(t,0)', // 强制关键帧
-          '-f', format, // 显式指定容器格式
-          tempPath
-        ];
-
-        // MP4 优化
-        if (request.container === 'mp4') {
-          args.splice(-1, 0, '-movflags', '+faststart');
-        }
+        // 精准剪（重编码）- 使用统一的参数构建函数
+        args = buildPreciseTrimArgs(request, tempPath);
       }
 
       logger!.info('开始视频裁剪导出', { 
