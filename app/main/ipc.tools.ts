@@ -416,12 +416,13 @@ export function setupToolsIPC() {
           // 使用 -c copy 避免重编码，移除会干扰帧结构的时间戳参数
           // 添加容器格式参数
           const format = request.container === 'mp4' ? 'mp4' : 'matroska';
+          const duration = request.range.endSec - request.range.startSec; // 计算持续时间
           
           args = [
             '-y',
             '-ss', request.range.startSec.toString(),
             '-i', request.input,
-            '-to', request.range.endSec.toString(),
+            '-t', duration.toString(), // 使用 -t 指定持续时间（相对于 -ss）
             '-c', 'copy',
             '-map', '0', // 映射所有流
             '-avoid_negative_ts', 'make_zero',
