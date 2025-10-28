@@ -410,20 +410,19 @@ export function setupToolsIPC() {
       let args: string[];
 
       if (request.mode === 'lossless' && isLosslessSuitable) {
-        // 无损快剪：将 -ss/-to 放在 -i 后以确保精确剪切，使用 -c copy 避免重编码
+        // 无损快剪：将 -ss 放在 -i 前启用输入定位（快速跳跃到关键帧），确保输出从关键帧开始
+        // 使用 -c copy 避免重编码，移除会干扰帧结构的时间戳参数
         // 添加容器格式参数
         const format = request.container === 'mp4' ? 'mp4' : 'matroska';
         
         args = [
           '-y',
-          '-i', request.input,
           '-ss', request.range.startSec.toString(),
+          '-i', request.input,
           '-to', request.range.endSec.toString(),
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
-          '-fflags', '+genpts', // 生成PTS时间戳
-          '-reset_timestamps', '1', // 重置时间戳
           '-f', format, // 显式指定容器格式
           tempPath
         ];
