@@ -258,9 +258,10 @@ function buildPreciseTrimArgs(request: TrimExportRequest, tempPath: string): str
     '-ss', request.range.startSec.toString(),
     '-t', (request.range.endSec - request.range.startSec).toString(),
     ...videoArgs,
+    '-force_key_frames', '0', // 确保首帧是关键帧
+    '-reset_timestamps', '1', // 重置时间戳
+    '-fflags', '+genpts', // 生成PTS时间戳
     '-avoid_negative_ts', 'make_zero', // 避免负时间戳
-    '-vsync', '0', // 保持原始帧率，避免帧同步问题
-    '-async', '1', // 音频同步
     '-f', format, // 显式指定容器格式
     tempPath
   ];
@@ -421,6 +422,8 @@ export function setupToolsIPC() {
           '-c', 'copy',
           '-map', '0', // 映射所有流
           '-avoid_negative_ts', 'make_zero',
+          '-fflags', '+genpts', // 生成PTS时间戳
+          '-reset_timestamps', '1', // 重置时间戳
           '-f', format, // 显式指定容器格式
           tempPath
         ];
