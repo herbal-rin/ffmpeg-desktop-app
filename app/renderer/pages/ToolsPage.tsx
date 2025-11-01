@@ -4,6 +4,8 @@
 
 import React, { useEffect, useState, useCallback } from 'react';
 import { useToolsStore } from '../store/useToolsStore';
+import { useSettingsStore } from '../store/useSettingsStore';
+import { useNavigationStore } from '../store/useNavigationStore';
 import { DualVideoPreview } from '../components/DualVideoPreview';
 import { RangeSlider } from '../components/RangeSlider';
 import { TrimPanel } from '../components/TrimPanel';
@@ -11,7 +13,9 @@ import { GifPanel } from '../components/GifPanel';
 import { AudioExtractPanel } from '../components/AudioExtractPanel';
 import { PreviewBar } from '../components/PreviewBar';
 import { Toast } from '../components/Toast';
-import { useDebouncedCallback } from '../hooks/useDebouncedValue';
+
+// localStorage key for temporary output directory
+const TEMP_OUTPUT_DIR_KEY = 'ffmpeg-app-temp-output-dir';
 
 export const ToolsPage: React.FC = () => {
   const {
@@ -37,6 +41,15 @@ export const ToolsPage: React.FC = () => {
     setOutputDir
   } = useToolsStore();
 
+  // 从设置中获取默认输出目录
+  const {
+    defaultOutputDir,
+    loadSettings
+  } = useSettingsStore();
+
+  // 导航功能
+  const { navigateTo } = useNavigationStore();
+
   const [toast, setToast] = useState<{
     show: boolean;
     message: string;
@@ -52,6 +65,41 @@ export const ToolsPage: React.FC = () => {
   // 添加选项卡状态
   const [activeTab, setActiveTab] = useState<'trim' | 'gif' | 'audio'>('trim');
 
+  // 用于追踪是否已经显示过输出目录设置的提示
+  const hasShownOutputDirToast = React.useRef(false);
+
+  // 初始化：加载设置和恢复临时输出目录
+  useEffect(() => {
+    loadSettings();
+    
+    // 从 localStorage 恢复临时输出目录
+    const tempDir = localStorage.getItem(TEMP_OUTPUT_DIR_KEY);
+    if (tempDir && !outputDir) {
+      console.log('📁 从本地存储恢复输出目录:', tempDir);
+      setOutputDir(tempDir);
+    }
+  }, [loadSettings]);
+
+  // 设置默认输出目录（优先级：临时保存 > 设置中的默认目录）
+  useEffect(() => {
+    // 只在没有设置输出目录时自动设置
+    if (!outputDir && defaultOutputDir) {
+      // 优先使用设置中的默认输出目录
+      console.log('📁 使用设置中的默认输出目录:', defaultOutputDir);
+      setOutputDir(defaultOutputDir);
+      
+      // 只显示一次提示
+      if (!hasShownOutputDirToast.current) {
+        hasShownOutputDirToast.current = true;
+        setToast({
+          show: true,
+          message: `输出目录已设置为: ${defaultOutputDir}`,
+          type: 'success'
+        });
+      }
+    }
+  }, [defaultOutputDir, outputDir, setOutputDir]);
+
   // 显示提示
   const showToast = (message: string, type: 'info' | 'error' | 'success' | 'warning') => {
     setToast({
@@ -64,8 +112,10 @@ export const ToolsPage: React.FC = () => {
   // 监听工具事件
   useEffect(() => {
     const handleToolsEvent = (payload: any) => {
+      console.log('🔔 收到 tools/events 事件', payload);
       switch (payload.type) {
         case 'preview-start':
+          console.log('📹 预览开始');
           setIsPreviewing(true);
           setPreviewProgress(0);
           break;
@@ -75,10 +125,14 @@ export const ToolsPage: React.FC = () => {
           }
           break;
         case 'preview-done':
+          console.log('✅ 预览完成', { tempPath: payload.tempPath });
           setIsPreviewing(false);
           setPreviewProgress(100);
           if (payload.tempPath) {
+            console.log('🎬 设置预览路径:', payload.tempPath);
             setPreviewPath(payload.tempPath);
+          } else {
+            console.warn('⚠️ preview-done 事件没有 tempPath');
           }
           setToast({
             show: true,
@@ -87,6 +141,7 @@ export const ToolsPage: React.FC = () => {
           });
           break;
         case 'preview-error':
+          console.error('❌ 预览错误', payload.error);
           setIsPreviewing(false);
           setPreviewProgress(0);
           setToast({
@@ -97,6 +152,7 @@ export const ToolsPage: React.FC = () => {
           });
           break;
         case 'preview-cancelled':
+          console.log('🚫 预览已取消');
           setIsPreviewing(false);
           setPreviewProgress(0);
           setToast({
@@ -105,6 +161,8 @@ export const ToolsPage: React.FC = () => {
             type: 'info'
           });
           break;
+        default:
+          console.warn('⚠️ 未知的事件类型:', payload.type);
       }
     };
 
@@ -230,28 +288,50 @@ export const ToolsPage: React.FC = () => {
     }
   };
 
-  // 生成预览（防抖版本）
-  const _handlePreviewDebounced = useDebouncedCallback(async (type: 'trim' | 'gif') => {
-    if (!selectedFile) return;
+  // 生成预览（直接调用，不使用防抖）
+  const handlePreviewGeneration = async (type: 'trim' | 'gif') => {
+    if (!selectedFile) {
+      console.warn('❌ 没有选择文件，无法生成预览');
+      return;
+    }
 
+    console.log('🎬 开始生成预览', { type, tempPath: selectedFile.tempPath, timeRange });
+    
     try {
       if (type === 'trim') {
-        await window.api.invoke('tools/trim/preview', {
+        console.log('📹 调用 trim/preview');
+        const result = await window.api.invoke('tools/trim/preview', {
           input: selectedFile.tempPath,
           range: timeRange,
           previewSeconds: 8,
           scaleHalf: true
         });
+        console.log('✅ trim/preview 调用成功', result);
+        
+        // 手动更新 previewPath 到 store
+        if (result && result.previewPath) {
+          console.log('📺 更新预览路径到 store:', result.previewPath);
+          setPreviewPath(result.previewPath);
+        }
       } else if (type === 'gif') {
-        await window.api.invoke('tools/gif/preview', {
+        console.log('🎞️ 调用 gif/preview');
+        const result = await window.api.invoke('tools/gif/preview', {
           input: selectedFile.tempPath,
           range: timeRange,
           fps: gifFps,
           maxWidth: gifMaxWidth,
           dithering: gifDithering
         });
+        console.log('✅ gif/preview 调用成功', result);
+        
+        // 手动更新 previewPath 到 store
+        if (result && result.previewPath) {
+          console.log('📺 更新预览路径到 store:', result.previewPath);
+          setPreviewPath(result.previewPath);
+        }
       }
     } catch (error) {
+      console.error('❌ 预览生成失败', error);
       setToast({
         show: true,
         message: '预览生成失败',
@@ -259,7 +339,7 @@ export const ToolsPage: React.FC = () => {
         details: error instanceof Error ? error.message : String(error)
       });
     }
-  }, 400); // 400ms 防抖
+  };
 
 
   // 导出文件
@@ -389,10 +469,16 @@ export const ToolsPage: React.FC = () => {
     try {
       const result = await window.api.invoke('dialog/select-output-dir', {});
       if (result && result.filePaths && result.filePaths.length > 0) {
-        setOutputDir(result.filePaths[0]);
+        const selectedDir = result.filePaths[0];
+        setOutputDir(selectedDir);
+        
+        // 保存到 localStorage
+        localStorage.setItem(TEMP_OUTPUT_DIR_KEY, selectedDir);
+        console.log('💾 已保存输出目录到本地存储:', selectedDir);
+        
         setToast({
           show: true,
-          message: `输出目录已设置为: ${result.filePaths[0]}`,
+          message: `输出目录已设置为: ${selectedDir}`,
           type: 'success'
         });
       }
@@ -406,21 +492,51 @@ export const ToolsPage: React.FC = () => {
     }
   };
 
+  // 将当前输出目录设为默认
+  const handleSetAsDefault = async () => {
+    if (!outputDir) {
+      setToast({
+        show: true,
+        message: '请先选择输出目录',
+        type: 'error'
+      });
+      return;
+    }
+
+    try {
+      await window.api.invoke('settings/set', { defaultOutputDir: outputDir });
+      setToast({
+        show: true,
+        message: '已设置为默认输出目录',
+        type: 'success'
+      });
+    } catch (error) {
+      setToast({
+        show: true,
+        message: '设置默认目录失败',
+        type: 'error',
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  };
+
   // 处理预览按钮点击
   const handlePreview = async () => {
-    console.log('🔍 点击生成预览', { activeTab, selectedFile: !!selectedFile, timeRange });
+    console.log('🔍 点击生成预览按钮', { activeTab, selectedFile: !!selectedFile, isPreviewing, timeRange });
     if (!selectedFile) {
       console.warn('❌ 没有选择文件');
+      showToast('请先选择视频文件', 'error');
       return;
     }
     try {
       if (activeTab === 'trim') {
-        await _handlePreviewDebounced('trim');
+        await handlePreviewGeneration('trim');
       } else if (activeTab === 'gif') {
-        await _handlePreviewDebounced('gif');
+        await handlePreviewGeneration('gif');
       }
     } catch (error) {
-      console.error('预览失败:', error);
+      console.error('❌ 预览失败:', error);
+      showToast('预览生成失败', 'error');
     }
   };
 
@@ -520,7 +636,7 @@ export const ToolsPage: React.FC = () => {
         <div className="mb-6">
           <div className="flex items-center gap-4">
             <label className="text-sm font-medium text-gray-700">输出目录:</label>
-            <div className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md">
+            <div className="flex-1 px-3 py-2 bg-white border border-gray-300 rounded-md text-sm">
               {outputDir || '未设置'}
             </div>
             <button
@@ -529,7 +645,22 @@ export const ToolsPage: React.FC = () => {
             >
               选择目录
             </button>
+            {outputDir && (
+              <button
+                onClick={handleSetAsDefault}
+                className="px-4 py-2 bg-green-500 text-white rounded-md hover:bg-green-600 transition-colors whitespace-nowrap"
+                title="将当前目录设为默认输出目录"
+              >
+                设为默认
+              </button>
+            )}
           </div>
+          {!defaultOutputDir && (
+            <div className="mt-2 text-xs text-gray-500 flex items-center gap-1">
+              <span>💡</span>
+              <span>提示：可以在<button onClick={() => navigateTo('settings')} className="text-blue-500 hover:underline">设置页</button>配置默认输出目录</span>
+            </div>
+          )}
         </div>
 
         {/* 双视频预览 */}

@@ -17,15 +17,40 @@ let mainWindow: BrowserWindow | null = null;
  */
 function registerLocalFileProtocol(): void {
   protocol.registerBufferProtocol('local-video', (request, callback) => {
-    const url = request.url.replace('local-video://', '');
+    // 移除协议前缀，支持 local-video://path 和 local-video:///path
+    let url = request.url.replace('local-video://', '');
+    
+    console.log('[自定义协议] 请求 URL:', request.url);
+    console.log('[自定义协议] 解析后路径:', url);
+    
     try {
+      // 检查文件是否存在
+      if (!fs.existsSync(url)) {
+        console.error('[自定义协议] 文件不存在:', url);
+        callback({
+          error: -2 // FILE_NOT_FOUND
+        });
+        return;
+      }
+      
       const fileBuffer = fs.readFileSync(url);
       const mimeType = getMimeType(url);
+      
+      console.log('[自定义协议] 文件读取成功:', {
+        path: url,
+        size: fileBuffer.length,
+        mimeType
+      });
+      
       callback({
         mimeType,
         data: fileBuffer
       });
     } catch (error) {
+      console.error('[自定义协议] 读取文件失败:', {
+        url,
+        error: error instanceof Error ? error.message : String(error)
+      });
       callback({
         error: -2 // FILE_NOT_FOUND
       });

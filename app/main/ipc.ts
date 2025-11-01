@@ -704,6 +704,36 @@ export function setupIPC(): void {
   });
 
   /**
+   * 读取预览文件
+   */
+  ipcMain.handle('file/read-preview', async (_event, { filePath }: { filePath: string }) => {
+    try {
+      const fs = await import('fs');
+      
+      if (!fs.existsSync(filePath)) {
+        throw new Error(`文件不存在: ${filePath}`);
+      }
+      
+      const buffer = fs.readFileSync(filePath);
+      // 转换为数组以便传输
+      const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength);
+      
+      logger?.debug('读取预览文件成功', { 
+        filePath,
+        size: buffer.length
+      });
+      
+      return { buffer: arrayBuffer };
+    } catch (error) {
+      logger?.error('读取预览文件失败', { 
+        filePath,
+        error: error instanceof Error ? error.message : String(error) 
+      });
+      throw error;
+    }
+  });
+
+  /**
    * 清理临时文件
    */
   ipcMain.handle('file/cleanup-temp', async (_event, { tempPath }: { tempPath: string }) => {

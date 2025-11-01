@@ -107,25 +107,34 @@ export class PreviewService extends EventEmitter {
     const outputPath = path.join(this.tempDir, `${crypto.randomUUID()}.mp4`);
     const tempPath = `${outputPath}.tmp`;
 
-        const args = [
-          '-y',
-          '-ss', range.startSec.toString(),
-          '-i', input,
+        // 构建基础参数
+    const args = [
+      '-y',
+      '-ss', range.startSec.toString(),
+      '-i', input,
       '-t', duration.toString(),
       '-c:v', 'libx264',
-      '-preset', 'ultrafast',
-      '-crf', '28',
+      '-preset', 'veryfast', // 从 ultrafast 改为 veryfast，质量更好且速度仍然很快
+      '-crf', '23', // 从 28 改为 23，提升质量
       '-avoid_negative_ts', 'make_zero', // 避免负时间戳
-      '-an', // 移除音频以加快预览
-      '-progress', 'pipe:1',
-      '-nostats',
-      tempPath
+      '-c:a', 'aac', // 保留音频
+      '-b:a', '128k' // 音频码率
     ];
 
     // 添加缩放滤镜（如果启用）
+    // 使用 -2 确保高度是偶数（H.264 要求宽高都是偶数）
     if (scaleHalf) {
-      args.splice(-2, 0, '-vf', 'scale=iw/2:-1');
+      args.push('-vf', 'scale=iw/2:-2');
     }
+
+    // 添加输出参数
+    args.push(
+      '-f', 'mp4', // 显式指定输出格式
+      '-movflags', '+faststart', // 优化 MP4 头部，支持流式播放
+      '-progress', 'pipe:1',
+      '-nostats',
+      tempPath
+    );
 
     return new Promise((resolve, reject) => {
       this.logger.info('开始生成视频预览', { input, range, duration, args });
@@ -305,6 +314,7 @@ export class PreviewService extends EventEmitter {
           '-i', palettePath, // 调色板文件
           '-lavfi', `fps=${fps},scale='min(${maxWidth},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${dithering}:bayer_scale=5`,
           '-loop', '0', // 无限循环
+          '-f', 'gif', // 显式指定输出格式
           '-progress', 'pipe:1',
           '-nostats',
           tempPath
