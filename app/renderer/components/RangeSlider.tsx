@@ -21,6 +21,8 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
   const [endTimeStr, setEndTimeStr] = useState('');
   const [duration, setDuration] = useState(0);
   const sliderContainerRef = useRef<HTMLDivElement>(null);
+  const isStartEditingRef = useRef(false);
+  const isEndEditingRef = useRef(false);
 
   // 更新持续时间
   useEffect(() => {
@@ -36,47 +38,99 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
     }
   }, [selectedFile, setTimeRange]);
 
-  // 同步时间范围到字符串
+  // 同步时间范围到字符串（仅在非编辑状态下）
   useEffect(() => {
-    setStartTimeStr(toHMSms(timeRange.startSec));
-    setEndTimeStr(toHMSms(timeRange.endSec));
+    if (!isStartEditingRef.current) {
+      setStartTimeStr(toHMSms(timeRange.startSec));
+    }
+    if (!isEndEditingRef.current) {
+      setEndTimeStr(toHMSms(timeRange.endSec));
+    }
   }, [timeRange]);
 
-  const handleStartTimeChange = (value: string) => {
-    setStartTimeStr(value);
+  // 验证并应用开始时间
+  const applyStartTime = (value: string) => {
     const startSec = parseHMSms(value);
     
-    if (duration > 0) {
-      // 确保开始时间不超过结束时间
-      const maxStart = Math.max(0, timeRange.endSec - 0.5); // 最小区间0.5秒
-      const clampedStart = Math.min(startSec, maxStart);
-      
-      const validation = validateTimeRange({ startSec: clampedStart, endSec: timeRange.endSec }, duration);
-      if (validation.valid) {
-        setTimeRange({ startSec: clampedStart, endSec: timeRange.endSec });
-      } else {
-        // 如果输入无效，回退到有效值
-        setStartTimeStr(toHMSms(timeRange.startSec));
-      }
+    if (isNaN(startSec) || duration === 0) {
+      // 解析失败，回退到当前值
+      setStartTimeStr(toHMSms(timeRange.startSec));
+      return;
+    }
+    
+    // 确保开始时间不超过结束时间
+    const maxStart = Math.max(0, timeRange.endSec - 0.5); // 最小区间0.5秒
+    const clampedStart = Math.max(0, Math.min(startSec, maxStart));
+    
+    const validation = validateTimeRange({ startSec: clampedStart, endSec: timeRange.endSec }, duration);
+    if (validation.valid) {
+      setTimeRange({ startSec: clampedStart, endSec: timeRange.endSec });
+    } else {
+      // 如果输入无效，回退到有效值
+      setStartTimeStr(toHMSms(timeRange.startSec));
     }
   };
 
-  const handleEndTimeChange = (value: string) => {
-    setEndTimeStr(value);
+  // 验证并应用结束时间
+  const applyEndTime = (value: string) => {
     const endSec = parseHMSms(value);
     
-    if (duration > 0) {
-      // 确保结束时间不小于开始时间
-      const minEnd = Math.min(duration, timeRange.startSec + 0.5); // 最小区间0.5秒
-      const clampedEnd = Math.max(endSec, minEnd);
-      
-      const validation = validateTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd }, duration);
-      if (validation.valid) {
-        setTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd });
-      } else {
-        // 如果输入无效，回退到有效值
-        setEndTimeStr(toHMSms(timeRange.endSec));
-      }
+    if (isNaN(endSec) || duration === 0) {
+      // 解析失败，回退到当前值
+      setEndTimeStr(toHMSms(timeRange.endSec));
+      return;
+    }
+    
+    // 确保结束时间不小于开始时间
+    const minEnd = Math.min(duration, timeRange.startSec + 0.5); // 最小区间0.5秒
+    const clampedEnd = Math.max(minEnd, Math.min(endSec, duration));
+    
+    const validation = validateTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd }, duration);
+    if (validation.valid) {
+      setTimeRange({ startSec: timeRange.startSec, endSec: clampedEnd });
+    } else {
+      // 如果输入无效，回退到有效值
+      setEndTimeStr(toHMSms(timeRange.endSec));
+    }
+  };
+
+  const handleStartTimeChange = (value: string) => {
+    // 允许用户自由输入，不做实时验证
+    setStartTimeStr(value);
+  };
+
+  const handleEndTimeChange = (value: string) => {
+    // 允许用户自由输入，不做实时验证
+    setEndTimeStr(value);
+  };
+
+  const handleStartTimeBlur = () => {
+    isStartEditingRef.current = false;
+    applyStartTime(startTimeStr);
+  };
+
+  const handleEndTimeBlur = () => {
+    isEndEditingRef.current = false;
+    applyEndTime(endTimeStr);
+  };
+
+  const handleStartTimeFocus = () => {
+    isStartEditingRef.current = true;
+  };
+
+  const handleEndTimeFocus = () => {
+    isEndEditingRef.current = true;
+  };
+
+  const handleStartTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur(); // 触发 onBlur，从而应用更改
+    }
+  };
+
+  const handleEndTimeKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      e.currentTarget.blur(); // 触发 onBlur，从而应用更改
     }
   };
 
@@ -136,6 +190,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
             type="text"
             value={startTimeStr}
             onChange={(e) => handleStartTimeChange(e.target.value)}
+            onFocus={handleStartTimeFocus}
+            onBlur={handleStartTimeBlur}
+            onKeyDown={handleStartTimeKeyDown}
             placeholder="HH:MM:SS.mmm"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
@@ -148,6 +205,9 @@ export const RangeSlider: React.FC<RangeSliderProps> = ({ className = '' }) => {
             type="text"
             value={endTimeStr}
             onChange={(e) => handleEndTimeChange(e.target.value)}
+            onFocus={handleEndTimeFocus}
+            onBlur={handleEndTimeBlur}
+            onKeyDown={handleEndTimeKeyDown}
             placeholder="HH:MM:SS.mmm"
             className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
           />
