@@ -18,6 +18,7 @@ import {
   TrimExportRequest, TrimExportResponse,
   GifPreviewRequest, GifPreviewResponse,
   GifExportRequest, GifExportResponse,
+  AudioPreviewRequest, AudioPreviewResponse,
   AudioExtractRequest, AudioExtractResponse,
   PreviewCancelRequest, PreviewCancelResponse,
   TimeRange
@@ -573,11 +574,21 @@ export function setupToolsIPC() {
             detached: false
           });
 
+          // 捕获调色板生成的 stderr
+          let paletteStderr = '';
+          paletteProcess.stderr?.on('data', (data) => {
+            paletteStderr += data.toString();
+          });
+
           await new Promise<void>((paletteResolve, paletteReject) => {
             paletteProcess.on('close', (code) => {
               if (code === 0) {
                 paletteResolve();
               } else {
+                logger!.error('调色板生成失败 - FFmpeg stderr', { 
+                  code, 
+                  stderr: paletteStderr.split('\n').slice(-20).join('\n') // 最后20行
+                });
                 paletteReject(new Error(`调色板生成失败，退出码: ${code}`));
               }
             });
@@ -594,6 +605,7 @@ export function setupToolsIPC() {
             '-i', palettePath,
             '-lavfi', `fps=${request.fps},scale='min(${request.maxWidth || 640},iw)':-1:flags=lanczos [x]; [x][1:v] paletteuse=dither=${request.dithering || 'bayer'}:bayer_scale=5`,
             '-loop', '0', // 无限循环
+            '-f', 'gif', // 显式指定输出格式为 GIF
             tempPath
           ];
 
@@ -604,6 +616,12 @@ export function setupToolsIPC() {
             shell: false,
             windowsHide: true,
             detached: false
+          });
+
+          // 捕获 GIF 生成的 stderr
+          let gifStderr = '';
+          gifProcess.stderr?.on('data', (data) => {
+            gifStderr += data.toString();
           });
 
           gifProcess.on('close', (code) => {
@@ -628,8 +646,13 @@ export function setupToolsIPC() {
               if (fs.existsSync(tempPath)) {
                 fs.unlinkSync(tempPath);
               }
+              // 记录详细的错误信息
+              logger!.error('GIF 导出失败 - FFmpeg stderr', { 
+                code, 
+                tempPath,
+                stderr: gifStderr.split('\n').slice(-30).join('\n') // 最后30行
+              });
               const error = new Error(`GIF 导出失败，退出码: ${code}`);
-              logger!.error('GIF 导出失败', { code, tempPath });
               reject(error);
             }
           });
@@ -659,6 +682,44 @@ export function setupToolsIPC() {
       });
     } catch (error) {
       logger!.error('GIF 导出失败', { 
+        error: error instanceof Error ? error.message : String(error),
+        request 
+      });
+      throw error;
+    }
+  });
+
+  // 音频预览
+  ipcMain.handle('tools/audio/preview', async (_event, request: AudioPreviewRequest) => {
+    try {
+      // 验证输入文件
+      if (!fs.existsSync(request.input)) {
+        throw new Error('输入文件不存在');
+      }
+
+      // 获取视频信息
+      const probeResult = await ffprobeService!.probe(request.input);
+      const duration = probeResult.durationSec;
+
+      // 验证时间范围
+      const validation = validateTimeRange(request.range, duration);
+      if (!validation.valid) {
+        throw new Error(validation.error);
+      }
+
+      // 生成预览
+      const result = await previewService!.generateAudioPreview(
+        request.input,
+        request.range,
+        request.format || 'mp3'
+      );
+
+      return { 
+        previewPath: result.audioPath, 
+        waveformData: result.waveformData 
+      } as AudioPreviewResponse;
+    } catch (error) {
+      logger!.error('音频预览失败', { 
         error: error instanceof Error ? error.message : String(error),
         request 
       });
@@ -743,6 +804,14 @@ export function setupToolsIPC() {
         }
       }
 
+      // 显式指定输出格式（解决 .tmp 扩展名无法识别的问题）
+      const format = request.mode === 'copy' ? 'mp4' :  // m4a 使用 mp4 容器
+                     request.codec === 'libmp3lame' ? 'mp3' :
+                     request.codec === 'aac' ? 'adts' :  // aac 原始流
+                     request.codec === 'flac' ? 'flac' :
+                     request.codec === 'libopus' ? 'opus' : 'mp4';
+      args.push('-f', format);
+
       args.push(tempPath);
 
       logger!.info('开始音频提取', { args });
@@ -753,6 +822,12 @@ export function setupToolsIPC() {
           shell: false,
           windowsHide: true,
           detached: false
+        });
+
+        // 捕获 stderr 输出
+        let stderr = '';
+        process.stderr?.on('data', (data) => {
+          stderr += data.toString();
         });
 
         process.on('close', (code) => {
@@ -774,8 +849,13 @@ export function setupToolsIPC() {
             if (fs.existsSync(tempPath)) {
               fs.unlinkSync(tempPath);
             }
+            // 记录详细的错误信息
+            logger!.error('音频提取失败 - FFmpeg stderr', { 
+              code, 
+              tempPath,
+              stderr: stderr.split('\n').slice(-30).join('\n') // 最后30行
+            });
             const error = new Error(`音频提取失败，退出码: ${code}`);
-            logger!.error('音频提取失败', { code, tempPath });
             reject(error);
           }
         });

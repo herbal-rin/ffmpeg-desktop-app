@@ -27,6 +27,7 @@ export interface ToolsState {
   previewPath: string | null;
   isPreviewing: boolean;
   previewProgress: number;
+  waveformData: number[];
   
   // 工具选项
   trimMode: 'lossless' | 'precise';
@@ -51,6 +52,7 @@ export interface ToolsState {
   setPreviewPath: (path: string | null) => void;
   setIsPreviewing: (isPreviewing: boolean) => void;
   setPreviewProgress: (progress: number) => void;
+  setWaveformData: (data: number[]) => void;
   setTrimMode: (mode: 'lossless' | 'precise') => void;
   setTrimContainer: (container: 'mp4' | 'mkv') => void;
   setTrimVideoCodec: (codec: string) => void;
@@ -73,6 +75,7 @@ const initialState = {
   previewPath: null,
   isPreviewing: false,
   previewProgress: 0,
+  waveformData: [],
   trimMode: 'lossless' as const,
   trimContainer: 'mp4' as const,
   trimVideoCodec: 'libx264',
@@ -95,6 +98,7 @@ export const useToolsStore = create<ToolsState>()(
     setPreviewPath: (path) => set({ previewPath: path }),
     setIsPreviewing: (isPreviewing) => set({ isPreviewing }),
     setPreviewProgress: (progress) => set({ previewProgress: progress }),
+    setWaveformData: (data) => set({ waveformData: data }),
     setTrimMode: (mode) => set({ trimMode: mode }),
     setTrimContainer: (container) => set({ trimContainer: container }),
     setTrimVideoCodec: (codec) => set({ trimVideoCodec: codec }),

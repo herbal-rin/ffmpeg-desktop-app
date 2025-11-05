@@ -7,6 +7,7 @@ import { useToolsStore } from '../store/useToolsStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { useNavigationStore } from '../store/useNavigationStore';
 import { DualVideoPreview } from '../components/DualVideoPreview';
+import { AudioPreview } from '../components/AudioPreview';
 import { RangeSlider } from '../components/RangeSlider';
 import { TrimPanel } from '../components/TrimPanel';
 import { GifPanel } from '../components/GifPanel';
@@ -38,6 +39,7 @@ export const ToolsPage: React.FC = () => {
     setPreviewPath,
     setIsPreviewing,
     setPreviewProgress,
+    setWaveformData,
     setOutputDir
   } = useToolsStore();
 
@@ -289,7 +291,7 @@ export const ToolsPage: React.FC = () => {
   };
 
   // 生成预览（直接调用，不使用防抖）
-  const handlePreviewGeneration = async (type: 'trim' | 'gif') => {
+  const handlePreviewGeneration = async (type: 'trim' | 'gif' | 'audio') => {
     if (!selectedFile) {
       console.warn('❌ 没有选择文件，无法生成预览');
       return;
@@ -328,6 +330,24 @@ export const ToolsPage: React.FC = () => {
         if (result && result.previewPath) {
           console.log('📺 更新预览路径到 store:', result.previewPath);
           setPreviewPath(result.previewPath);
+        }
+      } else if (type === 'audio') {
+        console.log('🎵 调用 audio/preview');
+        const result = await window.api.invoke('tools/audio/preview', {
+          input: selectedFile.tempPath,
+          range: timeRange,
+          format: 'mp3'
+        });
+        console.log('✅ audio/preview 调用成功', result);
+        
+        // 更新预览路径和波形数据到 store
+        if (result && result.previewPath) {
+          console.log('📺 更新音频预览路径到 store:', result.previewPath);
+          setPreviewPath(result.previewPath);
+          if (result.waveformData) {
+            console.log('📊 更新波形数据到 store');
+            setWaveformData(result.waveformData);
+          }
         }
       }
     } catch (error) {
@@ -533,6 +553,8 @@ export const ToolsPage: React.FC = () => {
         await handlePreviewGeneration('trim');
       } else if (activeTab === 'gif') {
         await handlePreviewGeneration('gif');
+      } else if (activeTab === 'audio') {
+        await handlePreviewGeneration('audio');
       }
     } catch (error) {
       console.error('❌ 预览失败:', error);
@@ -663,9 +685,10 @@ export const ToolsPage: React.FC = () => {
           )}
         </div>
 
-        {/* 双视频预览 */}
+        {/* 预览组件（根据选项卡显示不同的预览） */}
         <div className="mb-6">
-          <DualVideoPreview />
+          {(activeTab === 'trim' || activeTab === 'gif') && <DualVideoPreview />}
+          {activeTab === 'audio' && <AudioPreview />}
         </div>
 
         {/* 时间范围选择 */}
@@ -712,37 +735,35 @@ export const ToolsPage: React.FC = () => {
         {/* 操作按钮1（在选项卡下） */}
         {selectedFile && (
           <div className="mb-6 flex gap-3">
-            {activeTab !== 'audio' && (
-              <button
-                onClick={handlePreview}
-                disabled={isPreviewing}
-                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  isPreviewing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}
-              >
-                {isPreviewing ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    生成预览中... {Math.round(previewProgress)}%
-                  </div>
-                ) : (
-                  '生成预览'
-                )}
-              </button>
-            )}
-              <button
-                onClick={handleExportClick}
-                disabled={!outputDir || isPreviewing}
-                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  !outputDir || isPreviewing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
+            <button
+              onClick={handlePreview}
+              disabled={isPreviewing}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                isPreviewing
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              {isPreviewing ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  生成预览中... {Math.round(previewProgress)}%
+                </div>
+              ) : (
+                '生成预览'
+              )}
+            </button>
+            <button
+              onClick={handleExportClick}
+              disabled={!outputDir || isPreviewing}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                !outputDir || isPreviewing
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              }`}
+            >
               导出文件
-              </button>
+            </button>
           </div>
         )}
 
@@ -756,37 +777,35 @@ export const ToolsPage: React.FC = () => {
         {/* 操作按钮2（在工具面板下） */}
         {selectedFile && (
           <div className="mb-6 flex gap-3">
-            {activeTab !== 'audio' && (
-              <button
-                onClick={handlePreview}
-                disabled={isPreviewing}
-                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  isPreviewing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}
-              >
-                {isPreviewing ? (
-                  <div className="flex items-center justify-center">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
-                    生成预览中... {Math.round(previewProgress)}%
-                  </div>
-                ) : (
-                  '生成预览'
-                )}
-              </button>
-            )}
-              <button
-                onClick={handleExportClick}
-                disabled={!outputDir || isPreviewing}
-                className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
-                  !outputDir || isPreviewing
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-green-500 text-white hover:bg-green-600'
-                }`}
-              >
+            <button
+              onClick={handlePreview}
+              disabled={isPreviewing}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                isPreviewing
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-blue-500 text-white hover:bg-blue-600'
+              }`}
+            >
+              {isPreviewing ? (
+                <div className="flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                  生成预览中... {Math.round(previewProgress)}%
+                </div>
+              ) : (
+                '生成预览'
+              )}
+            </button>
+            <button
+              onClick={handleExportClick}
+              disabled={!outputDir || isPreviewing}
+              className={`flex-1 px-4 py-2 rounded-md font-medium transition-colors ${
+                !outputDir || isPreviewing
+                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                  : 'bg-green-500 text-white hover:bg-green-600'
+              }`}
+            >
               导出文件
-              </button>
+            </button>
           </div>
         )}
 

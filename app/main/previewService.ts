@@ -423,6 +423,201 @@ export class PreviewService extends EventEmitter {
   }
 
   /**
+   * 生成音频预览（含波形数据）
+   */
+  async generateAudioPreview(
+    input: string,
+    range: { startSec: number; endSec: number },
+    format: 'mp3' | 'aac' = 'mp3'
+  ): Promise<{ audioPath: string; waveformData: number[] }> {
+    // 如果有进行中的预览，取消它
+    if (this.currentProcess) {
+      await this.cancelPreview();
+    }
+
+    const uuid = crypto.randomUUID();
+    const ext = format === 'mp3' ? 'mp3' : 'm4a';
+    const tempPath = path.join(this.tempDir, `${uuid}.${ext}.tmp`);
+    const outputPath = path.join(this.tempDir, `${uuid}.${ext}`);
+    const duration = range.endSec - range.startSec;
+
+    this.logger.info('开始生成音频预览', {
+      input,
+      range,
+      duration,
+      format
+    });
+
+    const args = [
+      '-y',
+      '-ss', range.startSec.toString(),
+      '-i', input,
+      '-t', duration.toString(),
+      '-vn', // 不要视频流
+      '-map', '0:a:0', // 只取第一个音频流
+    ];
+
+    // 音频编码
+    if (format === 'mp3') {
+      args.push('-c:a', 'libmp3lame', '-b:a', '128k');
+    } else {
+      args.push('-c:a', 'aac', '-b:a', '128k');
+    }
+
+    // 添加输出格式
+    args.push('-f', format === 'mp3' ? 'mp3' : 'mp4');
+    args.push('-progress', 'pipe:1', '-nostats', tempPath);
+
+    this.emit('preview-start');
+
+    return new Promise((resolve, reject) => {
+      this.currentProcess = spawn(this.ffmpegPaths.ffmpeg, args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+        windowsHide: true,
+        detached: false
+      });
+
+      const totalDurationMs = duration * 1000;
+      
+      // 进度解析
+      this.currentProcess.stdout?.on('data', (data) => {
+        const partial = ProgressParser.parseProgressChunk(data);
+        const progress = ProgressParser.calculateProgress(partial, totalDurationMs);
+        if (progress.ratio > 0) {
+          this.emit('preview-progress', { percent: progress.ratio * 100 });
+        }
+      });
+
+      // 错误日志
+      let stderr = '';
+      this.currentProcess.stderr?.on('data', (data) => {
+        stderr += data.toString();
+      });
+
+      this.currentProcess.on('close', async (code) => {
+        this.currentProcess = null;
+
+        if (code === 0) {
+          try {
+            // 重命名为最终文件
+            fs.renameSync(tempPath, outputPath);
+            
+            // 生成波形数据
+            const waveformData = await this.generateWaveform(input, range);
+            
+            this.logger.info('音频预览生成完成', { outputPath });
+            this.emit('preview-done', { tempPath: outputPath });
+            resolve({ audioPath: outputPath, waveformData });
+          } catch (error) {
+            this.logger.error('音频预览文件处理失败', { 
+              error: error instanceof Error ? error.message : String(error) 
+            });
+            reject(new Error('音频预览文件处理失败'));
+          }
+        } else {
+          // 清理临时文件
+          if (fs.existsSync(tempPath)) {
+            fs.unlinkSync(tempPath);
+          }
+          this.logger.error('音频预览失败 - FFmpeg stderr', {
+            code,
+            stderr: stderr.split('\n').slice(-20).join('\n')
+          });
+          reject(new Error(`音频预览失败，退出码: ${code}`));
+        }
+      });
+
+      this.currentProcess.on('error', (error) => {
+        this.currentProcess = null;
+        if (fs.existsSync(tempPath)) {
+          fs.unlinkSync(tempPath);
+        }
+        this.logger.error('FFmpeg 进程启动失败', { error: error.message });
+        reject(error);
+      });
+    });
+  }
+
+  /**
+   * 生成音频波形数据
+   */
+  private async generateWaveform(
+    input: string,
+    range: { startSec: number; endSec: number },
+    samples: number = 100
+  ): Promise<number[]> {
+    const duration = range.endSec - range.startSec;
+    const args = [
+      '-ss', range.startSec.toString(),
+      '-i', input,
+      '-t', duration.toString(),
+      '-ac', '1', // 单声道
+      '-ar', '8000', // 降低采样率
+      '-f', 'f32le', // 32位浮点 PCM
+      '-'
+    ];
+
+    return new Promise((resolve) => {
+      const process = spawn(this.ffmpegPaths.ffmpeg, args, {
+        stdio: ['ignore', 'pipe', 'pipe'],
+        shell: false,
+        windowsHide: true
+      });
+
+      const chunks: Buffer[] = [];
+      
+      process.stdout?.on('data', (data) => {
+        chunks.push(data);
+      });
+
+      process.on('close', (code) => {
+        if (code === 0) {
+          try {
+            const buffer = Buffer.concat(chunks);
+            const floatArray = new Float32Array(buffer.buffer, buffer.byteOffset, buffer.length / 4);
+            
+            // 下采样到指定样本数
+            const step = Math.floor(floatArray.length / samples);
+            const waveform: number[] = [];
+            
+            for (let i = 0; i < samples; i++) {
+              const start = i * step;
+              const end = Math.min(start + step, floatArray.length);
+              let sum = 0;
+              
+              // 计算 RMS (均方根)
+              for (let j = start; j < end; j++) {
+                sum += floatArray[j] * floatArray[j];
+              }
+              
+              const rms = Math.sqrt(sum / (end - start));
+              waveform.push(Math.min(1, rms * 2)); // 归一化到 0-1
+            }
+            
+            resolve(waveform);
+          } catch (error) {
+            this.logger.error('波形数据处理失败', {
+              error: error instanceof Error ? error.message : String(error)
+            });
+            // 返回默认波形
+            resolve(Array(samples).fill(0.5));
+          }
+        } else {
+          this.logger.warn('波形生成失败', { code });
+          // 返回默认波形
+          resolve(Array(samples).fill(0.5));
+        }
+      });
+
+      process.on('error', (error) => {
+        this.logger.error('波形进程启动失败', { error: error.message });
+        resolve(Array(samples).fill(0.5));
+      });
+    });
+  }
+
+  /**
    * 清理所有预览文件
    */
   cleanupAllPreviews(): void {

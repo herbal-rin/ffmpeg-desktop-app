@@ -117,6 +117,17 @@ export interface GifExportResponse {
   output: string;
 }
 
+export interface AudioPreviewRequest {
+  input: string;
+  range: { startSec: number; endSec: number };
+  format?: 'mp3' | 'aac';
+}
+
+export interface AudioPreviewResponse {
+  previewPath: string;
+  waveformData: number[];
+}
+
 export interface AudioExtractRequest extends AudioExtractOptions {}
 
 export interface AudioExtractResponse {

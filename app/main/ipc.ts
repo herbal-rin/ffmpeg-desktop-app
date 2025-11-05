@@ -55,7 +55,23 @@ function initializeServices(): void {
         });
       });
       
+      jobQueue.on('job-failed', (data) => {
+        logger?.error('任务失败事件(job-failed)', { 
+          jobId: data.job?.id,
+          error: data.error 
+        });
+        mainWindow?.webContents.send('queue/events', {
+          type: 'job-failed',
+          job: data.job,
+          error: data.error
+        });
+      });
+      
       jobQueue.on('job-error', (data) => {
+        logger?.error('任务失败事件(job-error)', { 
+          jobId: data.job?.id,
+          error: data.error 
+        });
         mainWindow?.webContents.send('queue/events', {
           type: 'job-error',
           job: data.job,
@@ -398,11 +414,43 @@ export function setupIPC(): void {
           
           process.on('close', (code) => {
             if (code === 0) {
+              // 详细日志：记录原始输出的一部分
+              const outputLines = output.split('\n');
+              const relevantLines = outputLines.filter(line => 
+                line.includes('264') || line.includes('265') || 
+                line.includes('videotoolbox') || line.includes('nvenc') || line.includes('qsv')
+              );
+              logger?.debug('FFmpeg 编码器原始输出（相关行）', { 
+                totalLines: outputLines.length,
+                relevantLines: relevantLines.slice(0, 20)
+              });
+              
               const encoders = output
                 .split('\n')
-                .filter(line => line.includes('_nvenc') || line.includes('_qsv') || line.includes('_videotoolbox'))
-                .map(line => line.trim().split(/\s+/)[1])
+                .filter(line => {
+                  // 只匹配编码器行（以空格+V开头，表示视频编码器）
+                  const isVideoEncoder = /^\s+V/.test(line);
+                  if (!isVideoEncoder) return false;
+                  
+                  // 检测硬件加速编码器和软件编码器
+                  return line.includes('_nvenc') || 
+                         line.includes('_qsv') || 
+                         line.includes('_videotoolbox') ||
+                         line.includes('libx264') ||
+                         line.includes('libx265');
+                })
+                .map(line => {
+                  // 解析编码器名称（第二列）
+                  const parts = line.trim().split(/\s+/);
+                  logger?.debug('解析编码器行', { line, parts: parts.slice(0, 3) });
+                  return parts.length >= 2 ? parts[1] : null;
+                })
                 .filter((encoder): encoder is string => Boolean(encoder));
+              
+              logger?.info('检测到的编码器', { 
+                count: encoders.length,
+                encoders 
+              });
               resolve(encoders);
             } else {
               reject(new Error(`FFmpeg 退出码: ${code}`));

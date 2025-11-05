@@ -122,9 +122,11 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   // 取消任务
   cancelJob: async (jobId: string) => {
     try {
-      await window.api.invoke('ffmpeg/queue/cancel', { jobId });
+      console.log(`📤 发送取消任务请求: ${jobId}`);
+      const result = await window.api.invoke('ffmpeg/queue/cancel', { jobId });
+      console.log(`✅ 取消任务响应:`, result);
     } catch (error) {
-      console.error('取消任务失败:', error);
+      console.error('❌ 取消任务失败:', error);
       set({
         error: error instanceof Error ? error.message : '取消任务失败',
       });
@@ -204,10 +206,12 @@ export const useJobsStore = create<JobsState>((set, get) => ({
   // 处理队列事件
   handleQueueEvent: (payload: QueueEventPayload) => {
     const { type, job, progress, error } = payload;
+    console.log(`📨 收到队列事件: ${type}`, { jobId: job?.id, status: job?.status });
     
     switch (type) {
       case 'job-start':
         if (job) {
+          console.log(`▶️ 任务开始: ${job.id}`);
           set((state) => ({
             jobs: state.jobs.map(j => j.id === job.id ? { ...j, status: 'running', startedAt: Date.now() } : j),
             currentJob: job,
@@ -230,6 +234,7 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         
       case 'job-done':
         if (job) {
+          console.log(`✅ 任务完成: ${job.id}`);
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
@@ -252,22 +257,39 @@ export const useJobsStore = create<JobsState>((set, get) => ({
         break;
         
       case 'job-failed':
+      case 'job-error':
         if (job) {
+          // 确保错误消息是字符串
+          const errorMessage = error instanceof Error 
+            ? error.message 
+            : typeof error === 'string' 
+              ? error 
+              : String(error);
+          
+          console.log(`❌ 任务失败: ${job.id}`, { error, payload });
+          console.error('任务失败详情:', {
+            jobId: job.id,
+            errorMessage,
+            errorType: typeof error,
+            isErrorObject: error instanceof Error
+          });
+          
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
-                ? { ...j, status: 'failed' as const, error: error || '未知错误', finishedAt: Date.now() }
+                ? { ...j, status: 'failed' as const, error: errorMessage || '未知错误', finishedAt: Date.now() }
                 : j
             ),
             currentJob: null,
             isProcessing: state.queueLength > 1,
-            error: error || '任务执行失败',
+            error: errorMessage || '任务执行失败',
           }));
         }
         break;
         
       case 'job-canceled':
         if (job) {
+          console.log(`🚫 任务已取消: ${job.id}`);
           set((state) => ({
             jobs: state.jobs.map(j => 
               j.id === job.id 
@@ -277,10 +299,12 @@ export const useJobsStore = create<JobsState>((set, get) => ({
             currentJob: null,
             isProcessing: state.queueLength > 1,
           }));
+          console.log(`✅ 状态已更新为 canceled: ${job.id}`);
         }
         break;
         
       case 'queue-empty':
+        console.log(`📭 队列为空`);
         set((state) => ({
           isProcessing: false,
           currentJob: null,

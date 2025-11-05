@@ -334,11 +334,21 @@ export class JobQueue extends EventEmitter {
           job.status = 'failed';
           job.finishedAt = Date.now();
           job.error = error instanceof Error ? error.message : String(error);
+          
+          // 提取更详细的错误信息
+          let detailedError = job.error;
+          if (error instanceof Error && error.stack) {
+            detailedError = `${job.error}\n\n调试信息：\n${error.stack}`;
+          }
+          
           this.logger.error('任务执行失败', {
             jobId: job.id,
-            error: job.error
+            error: job.error,
+            errorName: error instanceof Error ? error.name : 'Unknown',
+            errorStack: error instanceof Error ? error.stack : undefined
           });
-          this.emit('job-failed', { job, error });
+          
+          this.emit('job-failed', { job, error: detailedError });
           reject(error);
         });
     });

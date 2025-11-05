@@ -4,6 +4,7 @@ import { CodecSelector } from '../components/CodecSelector';
 import { PresetPicker } from '../components/PresetPicker';
 import { AudioOptions } from '../components/AudioOptions';
 import { JobQueueTable } from '../components/JobQueueTable';
+import { FileRenamePanel } from '../components/FileRenamePanel';
 import { useJobsStore } from '../store/useJobsStore';
 import { useSettingsStore } from '../store/useSettingsStore';
 import { t, formatFileSize, formatDuration } from '../i18n';
@@ -47,20 +48,29 @@ function getPresetArgs(presetName: string, codec: VideoCodec): string[] {
     case 'hq_slow':
       if (codec === 'libx264') return ['-preset', 'slow', '-crf', '18'];
       if (codec === 'libx265') return ['-preset', 'slow', '-crf', '20'];
-      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '19', '-b:v', '0'];
-      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '22', '-b:v', '0'];
-      return ['-crf', '23'];
+      // VideoToolbox: 使用固定码率 2M (高质量但控制文件大小)
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-b:v', '2M'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-b:v', '1.5M'];
+      if (codec.includes('nvenc')) return ['-preset', 'p7', '-rc', 'vbr', '-cq', '19', '-b:v', '0'];
+      if (codec.includes('qsv')) return ['-preset', 'veryslow', '-global_quality', '18'];
+      return ['-crf', '18'];
     case 'balanced':
       if (codec === 'libx264') return ['-preset', 'medium', '-crf', '23'];
       if (codec === 'libx265') return ['-preset', 'medium', '-crf', '25'];
-      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '22', '-b:v', '0'];
-      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '25', '-b:v', '0'];
+      // VideoToolbox: 使用固定码率 1M (平衡质量和大小)
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-b:v', '1M'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-b:v', '800k'];
+      if (codec.includes('nvenc')) return ['-preset', 'p4', '-rc', 'vbr', '-cq', '24', '-b:v', '0'];
+      if (codec.includes('qsv')) return ['-preset', 'medium', '-global_quality', '23'];
       return ['-crf', '23'];
     case 'fast_small':
       if (codec === 'libx264') return ['-preset', 'fast', '-crf', '28'];
       if (codec === 'libx265') return ['-preset', 'fast', '-crf', '30'];
-      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '25', '-b:v', '0'];
-      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-rc:v', 'VBR', '-cq:v', '28', '-b:v', '0'];
+      // VideoToolbox: 使用固定码率 500k (小文件快速压缩)
+      if (codec === 'h264_videotoolbox') return ['-allow_sw', '1', '-b:v', '500k'];
+      if (codec === 'hevc_videotoolbox') return ['-allow_sw', '1', '-b:v', '400k'];
+      if (codec.includes('nvenc')) return ['-preset', 'p1', '-rc', 'vbr', '-cq', '28', '-b:v', '0'];
+      if (codec.includes('qsv')) return ['-preset', 'veryfast', '-global_quality', '28'];
       return ['-crf', '28'];
     default:
       return [];
@@ -73,12 +83,6 @@ function getPresetArgs(presetName: string, codec: VideoCodec): string[] {
 export function CompressPage() {
   const [files, setFiles] = useState<FileInfo[]>([]);
   const [outputDir, setOutputDir] = useState<string>('');
-  const [outputFileName, setOutputFileName] = useState<string>(''); // 新增输出文件名
-  const outputFileNameRef = React.useRef(outputFileName); // 用于在异步回调中访问最新值
-  
-  React.useEffect(() => {
-    outputFileNameRef.current = outputFileName;
-  }, [outputFileName]);
   const [container, setContainer] = useState<Container>('mp4');
   const [videoCodec, setVideoCodec] = useState<VideoCodec | 'auto'>('auto');
   const [preset, setPreset] = useState<string>('balanced');
@@ -112,9 +116,6 @@ export function CompressPage() {
       setOutputDir(defaultOutputDir);
     }
   }, [defaultOutputDir, outputDir]);
-
-  // 不使用 useEffect 自动设置，避免覆盖用户输入
-  // 输出文件名将由用户在输入框中手动输入，或使用默认的输入文件名
 
   // 检查是否有文件正在传输
   const hasTransferringFiles = files.some(f => f.isTransferring === true);
@@ -249,18 +250,6 @@ export function CompressPage() {
       }
     }
     
-    // 使用 ref 访问最新的 outputFileName，避免闭包问题
-    const currentOutputFileName = outputFileNameRef.current;
-    
-    // 如果只有一个文件且输出文件名为空，设置默认值
-    if (selectedFiles.length === 1 && !currentOutputFileName) {
-      const baseName = getBasename(selectedFiles[0].name);
-      setOutputFileName(baseName);
-    } else if (selectedFiles.length !== 1 && currentOutputFileName) {
-      // 多文件时清空
-      setOutputFileName('');
-    }
-    
     console.log('📊 文件添加完成');
   }, []);
 
@@ -337,20 +326,8 @@ export function CompressPage() {
         const actualCodec = videoCodec === 'auto' ? 'libx264' : videoCodec;
         const presetArgs = getPresetArgs(preset, actualCodec);
         
-        // 确定输出文件名：使用自定义名称或输入文件名
-        let finalOutputName: string | undefined;
-        
-        // 使用 ref 获取最新的 outputFileName 值，避免闭包问题
-        const currentOutputFileName = outputFileNameRef.current;
-        
-        if (files.length === 1 && currentOutputFileName.trim()) {
-          // 单文件且有自定义名称
-          finalOutputName = currentOutputFileName.trim();
-        } else if (files.length === 1 && !currentOutputFileName.trim()) {
-          // 单文件但无自定义名称，使用输入文件名
-          finalOutputName = getBasename(fileInfo.file.name);
-        }
-        // 多文件时使用默认（在每个文件的基础名上）
+        // 使用自定义输出名称或原文件名
+        const finalOutputName = fileInfo.customOutputName || getBasename(fileInfo.file.name);
         
         const options: TranscodeOptions = {
           input: fileInfo.tempPath, // 使用临时路径
@@ -648,7 +625,8 @@ export function CompressPage() {
                   <h3 className="font-medium text-sm text-gray-700 dark:text-gray-300 mb-4">
                     {t('settings.output')}
                   </h3>
-                  <div className="space-y-3">
+                  <div className="space-y-4">
+                    {/* 输出目录 */}
                     <div className="flex items-center space-x-2">
                       <input
                         type="text"
@@ -666,38 +644,17 @@ export function CompressPage() {
                         {t('compress.selectOutputDir')}
                       </button>
                     </div>
-                    {/* 输出文件名 - 仅单文件时显示 */}
-                    {files.length === 1 && (
-                      <div>
-                        <label className="label text-sm mb-2 flex items-center gap-2">
-                          输出文件名
-                          <span className="text-xs text-gray-500 dark:text-gray-400">(不含扩展名)</span>
-                        </label>
-                        <div className="flex items-center gap-2">
-                          <input
-                            type="text"
-                            value={outputFileName}
-                            onChange={(e) => setOutputFileName(e.target.value)}
-                            placeholder={files[0] ? getBasename(files[0].file.name) : '自动使用原文件名'}
-                            disabled={isProcessing || hasTransferringFiles}
-                            className="input flex-1"
-                          />
-                          <div className="text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">
-                            _{videoCodec.includes('h264') ? 'X264' : 'X265'}.{container}
-                          </div>
-                        </div>
-                        <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
-                          留空将使用输入文件名，将自动添加编码器后缀
-                        </p>
-                      </div>
-                    )}
                     
-                    {/* 多文件提示 */}
-                    {files.length > 1 && (
-                      <div className="p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-                        <p className="text-sm text-blue-600 dark:text-blue-400">
-                          ℹ️ 多文件模式：每个文件将使用原文件名 + 编码器后缀
-                        </p>
+                    {/* 文件重命名面板 */}
+                    {files.length > 0 && (
+                      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+                        <FileRenamePanel
+                          files={files}
+                          container={container}
+                          videoCodec={videoCodec === 'auto' ? 'libx264' : videoCodec}
+                          onFilesUpdate={setFiles}
+                          disabled={isProcessing || hasTransferringFiles}
+                        />
                       </div>
                     )}
                   </div>

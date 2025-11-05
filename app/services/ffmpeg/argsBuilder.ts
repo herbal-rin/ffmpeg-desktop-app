@@ -139,9 +139,10 @@ export class ArgsBuilder {
       case 'hevc_qsv':
         return { name: 'hq_slow', args: ['-preset', 'slow', '-global_quality', '21'] };
       case 'h264_videotoolbox':
-        return { name: 'hq_slow', args: ['-quality', 'best', '-realtime', 'false'] };
+        // VideoToolbox: 使用固定码率避免文件过大
+        return { name: 'hq_slow', args: ['-allow_sw', '1', '-b:v', '2M'] };
       case 'hevc_videotoolbox':
-        return { name: 'hq_slow', args: ['-quality', 'best', '-realtime', 'false'] };
+        return { name: 'hq_slow', args: ['-allow_sw', '1', '-b:v', '1.5M'] };
       default:
         throw new Error(`不支持的编码器: ${codec}`);
     }
@@ -157,17 +158,17 @@ export class ArgsBuilder {
       case 'libx265':
         return { name: 'balanced', args: ['-preset', 'medium', '-crf', '24'] };
       case 'h264_nvenc':
-        return { name: 'balanced', args: ['-preset', 'p4', '-cq', '22'] };
+        return { name: 'balanced', args: ['-preset', 'p4', '-rc', 'vbr', '-cq', '22', '-b:v', '0'] };
       case 'hevc_nvenc':
-        return { name: 'balanced', args: ['-preset', 'p4', '-cq', '24'] };
+        return { name: 'balanced', args: ['-preset', 'p4', '-rc', 'vbr', '-cq', '24', '-b:v', '0'] };
       case 'h264_qsv':
         return { name: 'balanced', args: ['-preset', 'medium', '-global_quality', '22'] };
       case 'hevc_qsv':
         return { name: 'balanced', args: ['-preset', 'medium', '-global_quality', '24'] };
       case 'h264_videotoolbox':
-        return { name: 'balanced', args: ['-quality', 'high', '-realtime', 'false'] };
+        return { name: 'balanced', args: ['-allow_sw', '1', '-b:v', '1M'] };
       case 'hevc_videotoolbox':
-        return { name: 'balanced', args: ['-quality', 'high', '-realtime', 'false'] };
+        return { name: 'balanced', args: ['-allow_sw', '1', '-b:v', '800k'] };
       default:
         throw new Error(`不支持的编码器: ${codec}`);
     }
@@ -183,17 +184,17 @@ export class ArgsBuilder {
       case 'libx265':
         return { name: 'fast_small', args: ['-preset', 'veryfast', '-crf', '28'] };
       case 'h264_nvenc':
-        return { name: 'fast_small', args: ['-preset', 'p3', '-cq', '27'] };
+        return { name: 'fast_small', args: ['-preset', 'p3', '-rc', 'vbr', '-cq', '27', '-b:v', '0'] };
       case 'hevc_nvenc':
-        return { name: 'fast_small', args: ['-preset', 'p3', '-cq', '29'] };
+        return { name: 'fast_small', args: ['-preset', 'p3', '-rc', 'vbr', '-cq', '29', '-b:v', '0'] };
       case 'h264_qsv':
         return { name: 'fast_small', args: ['-preset', 'veryfast', '-global_quality', '27'] };
       case 'hevc_qsv':
         return { name: 'fast_small', args: ['-preset', 'veryfast', '-global_quality', '29'] };
       case 'h264_videotoolbox':
-        return { name: 'fast_small', args: ['-quality', 'medium', '-realtime', 'true'] };
+        return { name: 'fast_small', args: ['-allow_sw', '1', '-b:v', '500k'] };
       case 'hevc_videotoolbox':
-        return { name: 'fast_small', args: ['-quality', 'medium', '-realtime', 'true'] };
+        return { name: 'fast_small', args: ['-allow_sw', '1', '-b:v', '400k'] };
       default:
         throw new Error(`不支持的编码器: ${codec}`);
     }

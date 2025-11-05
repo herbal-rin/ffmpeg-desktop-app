@@ -59,9 +59,13 @@ export function JobQueueTable() {
   // 处理任务操作
   const handleJobAction = async (action: string, jobId: string) => {
     try {
+      console.log(`🎬 执行任务操作: ${action}, jobId: ${jobId}`);
+      
       switch (action) {
         case 'cancel':
+          console.log(`🚫 准备取消任务: ${jobId}`);
           await cancelJob(jobId);
+          console.log(`✅ 任务取消请求已发送: ${jobId}`);
           break;
         case 'pause':
           await pauseJob(jobId);
@@ -70,6 +74,7 @@ export function JobQueueTable() {
           await resumeJob(jobId);
           break;
         case 'remove':
+          console.log(`🗑️ 移除任务: ${jobId}`);
           removeJob(jobId);
           break;
         case 'openFolder':
@@ -83,7 +88,7 @@ export function JobQueueTable() {
           break;
       }
     } catch (error) {
-      console.error(`任务操作失败 (${action}):`, error);
+      console.error(`❌ 任务操作失败 (${action}):`, error);
       (window as any).showToast?.(
         error instanceof Error ? error.message : '操作失败', 
         'error'
@@ -262,7 +267,8 @@ export function JobQueueTable() {
           <span>{t('queue.total')}: {jobs.length}</span>
           <span>
             {t('queue.completed')}: {jobs.filter(j => j.status === 'completed').length} • 
-            {t('queue.failed')}: {jobs.filter(j => j.status === 'failed').length}
+            {t('queue.failed')}: {jobs.filter(j => j.status === 'failed').length} • 
+            已取消: {jobs.filter(j => j.status === 'canceled').length}
           </span>
         </div>
       </div>
